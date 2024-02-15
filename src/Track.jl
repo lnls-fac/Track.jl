@@ -14,7 +14,7 @@ using .PosModule: Pos
 using .AcceleratorModule: Accelerator, find_spos, find_indices
 using .Tracking: element_pass, line_pass, ring_pass
 using .Orbit: find_orbit4, find_orbit6
-using .Models: StorageRing
+using .Models.StorageRing
 
 export Constants, 
         Auxiliary, 
@@ -22,7 +22,7 @@ export Constants,
         Elements, 
         Accelerator, find_spos, find_indices, 
         element_pass, line_pass, ring_pass,
-        find_orbit4, find_orbit6
+        find_orbit4, find_orbit6,
         StorageRing
 
 using PrecompileTools
