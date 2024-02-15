@@ -1,4 +1,4 @@
-using ..Auxiliary: BoolState, off, on, full, st_findorbit_not_converged, st_success, st_findorbit_one_turn_matrix_problem, no_plane, pm_bnd_mpole_symplectic4_pass
+using ..Auxiliary: BoolState, off, on, full, st_findorbit_not_converged, st_success, st_findorbit_one_turn_matrix_problem, no_plane, pm_bnd_mpole_symplectic4_pass, st_no_cavities_found
 using ..Tracking: line_pass, CGAMMA
 using ..PosModule: Pos, Pos_get_max
 using ..AcceleratorModule: Accelerator, find_cav_indices
@@ -79,7 +79,11 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{Float64} =
         accelerator.radiation_state = on
     end
 
-    cav::Element = accelerator.lattice[find_cav_indices(accelerator)[1]]
+    cav_indices::Vector{Int} = find_cav_indices(accelerator)
+    if isempty(cav_indices)
+        return Pos[], st_no_cavities_found
+    end
+    cav::Element = accelerator.lattice[cav_indices[1]]
 
     if true
         u0 = get_U0(accelerator)
@@ -192,8 +196,8 @@ function linalg_solve6_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
 end
 
 function get_U0(accelerator::Accelerator)
-    theta = []
-    leng = []
+    theta::Vector{Float64} = Float64[]
+    leng::Vector{Float64} = Float64[]
     for e in accelerator.lattice
         if e.pass_method == pm_bnd_mpole_symplectic4_pass
             push!(theta, e.angle)
