@@ -264,14 +264,13 @@ function pm_cavity_pass!(pos::Pos{Float64}, elem::Element, accelerator::Accelera
     philag::Float64 = elem.phase_lag
     frf::Float64 = elem.frequency
     harmonic_number::Int = accelerator.harmonic_number
-    velocity::Float64 = accelerator.velocity
-    # velocity = light_speed
+    velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
     L0::Float64 = accelerator.length
-    T0::Float64 = L0 / velocity
-    #println(stdout,"\nfactor = ",harmonic_number/frf - T0)
+    factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
+    println(stdout,"\nfactor = ", factor)
 
     if elem.length == 0
-        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity) - ((harmonic_number/frf - T0)*turn_number))) - philag)
+        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
         #pos.de += -nv * sin(TWOPI * frf * dl / velocity - philag)
     else
         px::Float64 = pos.px
@@ -285,7 +284,7 @@ function pm_cavity_pass!(pos::Pos{Float64}, elem::Element, accelerator::Accelera
         pos.dl += 0.5 * norml * pnorm * (px*px + py*py)
 
         # Longitudinal momentum kick
-        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity) - ((harmonic_number/frf - T0)*turn_number))) - philag)
+        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
         # pos.de += -nv * sin(TWOPI * frf * dl / velocity - philag)
 
         # Drift half length
