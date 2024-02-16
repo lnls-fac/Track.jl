@@ -86,11 +86,11 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{Float64} =
     cavidx::Int = cav_indices[1]
     cav::Element = accelerator.lattice[cavidx]
 
-    if true
-        u0 = get_U0(accelerator)
-        voltage = cav.voltage
-        fixed_point_guess[6] = -accelerator.length/(2*pi*accelerator.harmonic_number) * asin(u0/voltage)
-    end
+    # if true
+    #     u0 = get_U0(accelerator)
+    #     voltage = cav.voltage
+    #     fixed_point_guess[6] = -accelerator.length/(2*pi*accelerator.harmonic_number) * asin(u0/voltage)
+    # end
 
     frf::Float64 = cav.frequency
     longitudinal_fixed_point::Float64 = (accelerator.velocity / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
@@ -107,33 +107,45 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{Float64} =
 
     nr_iter = 0
     while (Pos_get_max(dco) > tolerance) && (nr_iter <= max_nr_iters)
+
         co = co + D
-        Ri = co[7]
+
+        Ri = copy(co[7]) # is *1e8 bigger
+
         status = st_success
         for i in [1, 2, 3, 4, 5, 6, 7]
-            pf, status, _ = line_pass(accelerator, co[i], [leng+1], turn_number=1)
+            pf, status, _ = line_pass(accelerator, co[i], [leng+1])
             co2[i] = copy(pf[1])
         end
+
         if status != st_success
             return Pos{Float64}[], st_findorbit_one_turn_matrix_problem
         end
 
-        Rf = co2[7]
-        M[1] = (co2[1] - Rf) / delta
-        M[2] = (co2[2] - Rf) / delta
-        M[3] = (co2[3] - Rf) / delta
-        M[4] = (co2[4] - Rf) / delta
-        M[5] = (co2[5] - Rf) / delta
-        M[6] = (co2[6] - Rf) / delta
-        b = Rf - Ri - theta
+        Rf = copy(co2[7]) # is *1e8 bigger
+        
+        M[1] = (co2[1] - Rf) / (delta)
+        
+        M[2] = (co2[2] - Rf) / (delta)
+        M[3] = (co2[3] - Rf) / (delta)
+        M[4] = (co2[4] - Rf) / (delta)
+        M[5] = (co2[5] - Rf) / (delta)
+        M[6] = (co2[6] - Rf) / (delta)
+        
+        b = (Rf - Ri) - theta
+        
         M_1 = fill(Pos(0.0), 6)
-        matrix6_set_identity_posvec(M_1)
-        M_1 = M_1 - M
+        M_1 = matrix6_set_identity_posvec(M_1)
+        
+        M_1 = M_1 - M # is *1e8 bigger
+        
+        dco = Pos(0.0)
         dco = linalg_solve6_posvec(M_1, b)
+        
         co[7] = dco + Ri
-        co[1] = co[7]; co[2] = co[7]
-        co[3] = co[7]; co[4] = co[7]
-        co[5] = co[7]; co[6] = co[7]
+        co[1] = copy(co[7]); co[2] = copy(co[7])
+        co[3] = copy(co[7]); co[4] = copy(co[7])
+        co[5] = copy(co[7]); co[6] = copy(co[7])
         nr_iter += 1
     end
     
@@ -163,7 +175,7 @@ function linalg_solve4_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
     
     # Populate the matrix and vector
     for i in 1:4
-        m[:, i] .= [A[j][i] for j in 1:4]
+        m[:, i] .= [A[i][j] for j in 1:4]
         b[i] = B[i]
     end
 
@@ -177,14 +189,13 @@ function linalg_solve4_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
 end
 
 function linalg_solve6_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
-    println(stdout, "using: linalg_solve6_posvec")
     m = Matrix{Float64}(undef, 6, 6)   # Create a 6x6 matrix
     b = Vector{Float64}(undef, 6)      # Create a vector of size 6
     x = Vector{Float64}(undef, 6)      # Create a solution vector of size 6
     
     # Populate the matrix and vector
     for i in 1:6
-        m[:, i] .= [A[j][i] for j in 1:6]
+        m[:, i] .= [A[i][j] for j in 1:6]
         b[i] = B[i]
     end
 
