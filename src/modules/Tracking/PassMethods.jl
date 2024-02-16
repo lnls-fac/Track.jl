@@ -267,7 +267,6 @@ function pm_cavity_pass!(pos::Pos{Float64}, elem::Element, accelerator::Accelera
     velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
     L0::Float64 = accelerator.length
     factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
-    println(stdout,"\nfactor = ", factor)
 
     if elem.length == 0
         pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
