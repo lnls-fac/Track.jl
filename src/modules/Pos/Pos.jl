@@ -108,7 +108,18 @@ function  Base.:/(v::Pos{T}, scalar::T) where T
 end
 
 function Base.copy(p::Pos{T}) where T
-    return Pos(p.rx, p.px, p.ry, p.py, p.de, p.dl)
+    tpsa=false
+    if typeof(p) == Pos{PowerSeries.Series6{Float64}}
+        tpsa=true
+    end
+    p_new = Pos(0.0, tpsa=tpsa)
+    p_new.rx = p.rx
+    p_new.px = p.px
+    p_new.ry = p.ry
+    p_new.py = p.py
+    p_new.de = p.de
+    p_new.dl = p.dl
+    return p_new
 end
 
 function Base.show(io::IO, ::MIME"text/plain", p::Pos{T}) where T
@@ -159,12 +170,9 @@ function Base.getindex(p::Pos{T}, ::Colon) where T
    return T[p.rx, p.px, p.ry, p.py, p.de, p.dl]
 end
 
-function Base.setindex!(p::Pos{T}, value::Float64, index::Int) where T
+function Base.setindex!(p::Pos{T}, value::T, index::Int) where T
     if !(0 < index <= 6)
         error("invaid Pos index: $index, should stay between 1 and 6")
-    end
-    if typeof(p) == Pos{PowerSeries.Series6{Float64}}
-        value = Tpsa(value, index, dim=6)
     end
     if index == 1
         p.rx = value

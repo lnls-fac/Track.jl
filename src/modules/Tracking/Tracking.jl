@@ -9,14 +9,15 @@ using ..Auxiliary: PassMethod, Plane, Status, no_plane, on, plane_x, plane_xy, p
     vchamber_ellipse, vchamber_rectangle, vchamber_rhombus, BoolState
 using ..Elements: Element
 using ..PosModule: Pos
+using PowerSeries
 
 
 function element_pass(
     element::Element,            # element through which to track particle
-    particle::Pos{Float64},      # initial electron coordinates
+    particle::Pos{T},      # initial electron coordinates
     accelerator::Accelerator;    # accelerator parameters
     turn_number::Int = 0         # optional turn number parameter
-    )
+    ) where T
     status::Status = st_success
 
     pass_method::PassMethod = element.pass_method
@@ -48,11 +49,11 @@ end
 
 function line_pass(
     accelerator::Accelerator,
-    particle::Pos{Float64},
+    particle::Pos{T},
     indices::Vector{Int};
     element_offset::Int = 1,
     turn_number::Int = 0
-    )
+    ) where T
     leng::Float64 = length(accelerator.lattice)
     if any([!(1<=i<=leng+1) for i in indices])
         error("invalid indices: outside of lattice bounds. The valid indices should stay between 1 and $(leng+1)")
@@ -60,10 +61,13 @@ function line_pass(
     if element_offset > leng || element_offset < 1
         error("invalid indices: outside of lattice bounds. The valid indices should stay between 1 and $leng")
     end
-
+    tpsa=false
+    if typeof(particle) == Pos{PowerSeries.Series6{Float64}}
+        tpsa = true
+    end
     status::Status = st_success
     lost_plane::Plane = no_plane
-    tracked_pos::Vector{Pos{Float64}} = Pos{Float64}[]
+    tracked_pos::Vector{Pos{T}} = Pos{T}[]
 
     line::Vector{Element} = accelerator.lattice
     nr_elements::Int = length(line)
@@ -72,7 +76,7 @@ function line_pass(
     indcs::Vector{Bool} = falses(nr_elements + 1)
     indcs[indices] .= true
 
-    pos::Pos{Float64} = particle
+    pos::Pos{T} = particle
 
     for i in 1:nr_elements
         # Read-only access to element object parameters
@@ -91,7 +95,7 @@ function line_pass(
             # Fill the rest of vector with NaNs
             for j in i+1:Int(length(indcs))
                 if indcs[j]
-                    push!(tracked_pos, Pos(NaN64, NaN64, NaN64, NaN64, NaN64, NaN64))
+                    push!(tracked_pos, Pos(NaN,tpsa=tpsa))
                 end
             end
             return tracked_pos, status, lost_plane
@@ -112,11 +116,11 @@ end
 
 function line_pass(
     accelerator::Accelerator,
-    particle::Pos{Float64},
+    particle::Pos{T},
     indices::String = "closed";
     element_offset::Int = 1,
     turn_number::Int = 0
-    )
+    ) where T
     leng::Int = length(accelerator.lattice)
     idcs::Vector{Int} = Int[]
     if indices == "closed"
@@ -132,16 +136,20 @@ function line_pass(
 end
 
 function ring_pass(accelerator::Accelerator, 
-    particle::Pos{Float64}, 
+    particle::Pos{T}, 
     nr_turns::Int = 1; 
     element_offset::Int = 1,
     turn_by_turn::Bool = false
-    )
+    ) where T
     if nr_turns<1 
         error("invalid nr_turns: should be >= 1")
     end
     if turn_by_turn
-        v = Pos{Float64}[]
+        v = Pos{T}[]
+    end
+    tpsa=false
+    if typeof(particle) == Pos{PowerSeries.Series6{Float64}}
+        tpsa = true
     end
     tracked = copy(particle)
     lostplane = no_plane
@@ -153,7 +161,7 @@ function ring_pass(accelerator::Accelerator,
                 push!(v, copy(tracked[1]))
             end
         else
-            append!(v, [Pos(NaN64, NaN64, NaN64, NaN64, NaN64, NaN64) for i in 1:1:(nr_turns-turn+1)])
+            append!(v, [Pos(NaN, tpsa=tpsa) for i in 1:1:(nr_turns-turn+1)])
             break
         end
         tracked = tracked[1]
@@ -165,7 +173,7 @@ function ring_pass(accelerator::Accelerator,
     return v, st, lostplane
 end
 
-function _check_if_lost!(element::Element, x::Float64, y::Float64, status::Status, lost_plane::Plane, vchamber_state::BoolState)
+function _check_if_lost!(element::Element, x::T, y::T, status::Status, lost_plane::Plane, vchamber_state::BoolState) where T
 
     if !isfinite(x)
         lost_plane = plane_x
@@ -186,7 +194,7 @@ function _check_if_lost!(element::Element, x::Float64, y::Float64, status::Statu
     end
 end
 
-function _aux_check_if_lost!(element::Element, x::Float64, y::Float64, status::Status, lost_plane::Plane)
+function _aux_check_if_lost!(element::Element, x::T, y::T, status::Status, lost_plane::Plane) where T
     if element.vchamber == vchamber_rectangle
         if x <= element.hmin || x >= element.hmax
             lost_plane = plane_x

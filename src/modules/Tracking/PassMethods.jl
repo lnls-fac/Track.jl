@@ -22,16 +22,18 @@ const CER::Float64 = 2.81794092e-15       # Classical electron radius [m]
 const CU::Float64 = 1.323094366892892     # 55/(24*sqrt(3)) factor
 const CQEXT::Float64 = sqrt(CU * CER * reduced_planck_constant * electron_charge * light_speed) * electron_charge * electron_charge / ((electron_mass*light_speed*light_speed)^3) #  for quant. diff. kick
 
-function _drift(pos::Pos{Float64}, length::Float64) 
-    pnorm::Float64 = 1 / (1 + pos.de)
-    norml::Float64 = length * pnorm
+function _drift(pos::Pos{T}, length::Float64) where T
+    pnorm::T = 1 / (1 + pos.de)
+    norml::T = length * pnorm
     pos.rx += norml * pos.px
     pos.ry += norml * pos.py
     pos.dl += 0.5 * norml * pnorm * (pos.px*pos.px + pos.py*pos.py)
 end
 
-function _calcpolykick(pos::Pos{Float64}, polynom_a::Vector{Float64},
-    polynom_b::Vector{Float64}) 
+function _calcpolykick(pos::Pos{T}, polynom_a::Vector{Float64},
+    polynom_b::Vector{Float64})  where T
+    real_sum::T = 0.0
+    imag_sum::T = 0.0
     n::Int = min(length(polynom_b), length(polynom_a))
     if n != 0
         real_sum = polynom_b[n]
@@ -41,41 +43,40 @@ function _calcpolykick(pos::Pos{Float64}, polynom_a::Vector{Float64},
             imag_sum = imag_sum * pos.rx + real_sum * pos.ry + polynom_a[i]
             real_sum = real_sum_tmp
         end
-        return real_sum, imag_sum
     end
-    return 0.0, 0.0
+    return real_sum, imag_sum
 end
 
-function _b2_perp(bx::Float64, by::Float64, px::Float64, py::Float64, curv::Float64=1.0) 
-    curv2::Float64 = curv^2
-    v_norm2_inv::Float64 = curv2 + px^2 + py^2
-    b2p::Float64 = by^2 + bx^2
+function _b2_perp(bx::T, by::T, px::T, py::T, curv::T=1.0) where T
+    curv2::T = curv^2
+    v_norm2_inv::T = curv2 + px^2 + py^2
+    b2p::T = by^2 + bx^2
     b2p *= curv2
     b2p += (bx * py - by * px)^2
     b2p /= v_norm2_inv
     return b2p
 end
 
-function _strthinkick(pos::Pos{Float64}, length::Float64, polynom_a::Vector{Float64},
-    polynom_b::Vector{Float64}, rad_const::Float64=0.0, qexcit_const::Float64=0.0) 
+function _strthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
+    polynom_b::Vector{Float64}, rad_const::Float64=0.0, qexcit_const::Float64=0.0) where T
 
-    real_sum::Float64 = 0.0
-    imag_sum::Float64 = 0.0
+    real_sum::T = 0.0
+    imag_sum::T = 0.0
     real_sum, imag_sum = _calcpolykick(pos, polynom_a, polynom_b)
 
     if rad_const != 0.0
-        pnorm::Float64 = 1 / (1 + pos.de)
-        px::Float64 = pos.px * pnorm
-        py::Float64 = pos.py * pnorm
-        b2p::Float64 = 0.0
+        pnorm::T = 1 / (1 + pos.de)
+        px::T = pos.px * pnorm
+        py::T = pos.py * pnorm
+        b2p::T = 0.0
         b2p = _b2_perp(imag_sum, real_sum, px, py)
-        delta_factor::Float64  = (1 + pos.de)^2
-        dl_ds::Float64  = 1.0 + ((px*px + py*py) / 2)
+        delta_factor::T  = (1 + pos.de)^2
+        dl_ds::T  = 1.0 + ((px*px + py*py) / 2)
         pos.de -= rad_const * delta_factor * b2p * dl_ds * length
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::Float64 = delta_factor * qexcit_const * sqrt(b2p^1.5 * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(b2p^1.5 * dl_ds)
             pos.de += d * randn()
         end
 
@@ -88,28 +89,28 @@ function _strthinkick(pos::Pos{Float64}, length::Float64, polynom_a::Vector{Floa
     pos.py += length * imag_sum
 end
 
-function _bndthinkick(pos::Pos{Float64}, length::Float64, polynom_a::Vector{Float64},
-    polynom_b::Vector{Float64}, irho::Float64, rad_const::Float64=0.0, qexcit_const::Float64=0.0) 
+function _bndthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
+    polynom_b::Vector{Float64}, irho::Float64, rad_const::Float64=0.0, qexcit_const::Float64=0.0) where T
     
-    real_sum::Float64 = 0.0
-    imag_sum::Float64 = 0.0
+    real_sum::T = 0.0
+    imag_sum::T = 0.0
     real_sum, imag_sum = _calcpolykick(pos, polynom_a, polynom_b)
-    de::Float64 = pos.de
+    de::T = pos.de
 
     if rad_const != 0.0
-        pnorm::Float64 = 1 / (1 + pos.de)
-        px::Float64 = pos.px * pnorm
-        py::Float64 = pos.py * pnorm
-        curv::Float64 = 1.0 + (irho * pos.rx)
-        b2p::Float64 = 0.0
+        pnorm::T = 1 / (1 + pos.de)
+        px::T = pos.px * pnorm
+        py::T = pos.py * pnorm
+        curv::T = 1.0 + (irho * pos.rx)
+        b2p::T = 0.0
         b2p = _b2_perp(imag_sum, real_sum+irho, px, py, curv)
-        delta_factor::Float64 = (1 + pos.de)^2
-        dl_ds::Float64 = curv + ((px*px + py*py) / 2)
+        delta_factor::T = (1 + pos.de)^2
+        dl_ds::T = curv + ((px*px + py*py) / 2)
         pos.de -= rad_const * delta_factor * b2p * dl_ds * length
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::Float64 = delta_factor * qexcit_const * sqrt(b2p^1.5 * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(b2p^1.5 * dl_ds)
             pos.de += d * randn()
         end
 
@@ -123,32 +124,32 @@ function _bndthinkick(pos::Pos{Float64}, length::Float64, polynom_a::Vector{Floa
     pos.dl += length * irho * pos.rx
 end
 
-function _edge_fringe(pos::Pos{Float64}, inv_rho::Float64, edge_angle::Float64,
-    fint::Float64, gap::Float64) 
-    de::Float64 = pos.de
-    rx::Float64 = pos.rx
-    ry::Float64 = pos.ry
+function _edge_fringe(pos::Pos{T}, inv_rho::Float64, edge_angle::Float64,
+    fint::Float64, gap::Float64) where T
+    de::T = pos.de
+    rx::T = pos.rx
+    ry::T = pos.ry
 
-    fx::Float64 = inv_rho * tan(edge_angle) / (1.0 + de)
+    fx::T = inv_rho * tan(edge_angle) / (1.0 + de)
 
-    psi_bar::Float64 = edge_angle - inv_rho * gap * fint * (1 + sin(edge_angle)^2) / cos(edge_angle) / (1.0 + de)
+    psi_bar::T = edge_angle - inv_rho * gap * fint * (1 + sin(edge_angle)^2) / cos(edge_angle) / (1.0 + de)
     
-    fy::Float64 = inv_rho * tan(psi_bar) / (1.0 + de)
+    fy::T = inv_rho * tan(psi_bar) / (1.0 + de)
     
     pos.px += rx * fx
     pos.py -= ry * fy
 end
 
-function pm_identity_pass!(pos::Pos{Float64}, element::Element) 
+function pm_identity_pass!(pos::Pos{T}, element::Element) where T
     return st_success
 end
 
-function pm_drift_pass!(pos::Pos{Float64}, element::Element) 
+function pm_drift_pass!(pos::Pos{T}, element::Element) where T
     _drift(pos, element.length)
     return st_success
 end
 
-function pm_str_mpole_symplectic4_pass!(pos::Pos{Float64}, elem::Element, accelerator::Accelerator) 
+function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator) where T
 
     steps::Int = elem.nr_steps
 
@@ -183,7 +184,7 @@ function pm_str_mpole_symplectic4_pass!(pos::Pos{Float64}, elem::Element, accele
     return st_success
 end
 
-function pm_bnd_mpole_symplectic4_pass!(pos::Pos{Float64}, elem::Element, accelerator::Accelerator) 
+function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator) where T
 
     steps::Int = elem.nr_steps
 
@@ -231,7 +232,7 @@ function pm_bnd_mpole_symplectic4_pass!(pos::Pos{Float64}, elem::Element, accele
     return st_success
 end
 
-function pm_corrector_pass!(pos::Pos{Float64}, elem::Element) 
+function pm_corrector_pass!(pos::Pos{T}, elem::Element) where T
 
     xkick::Float64 = elem.hkick
     ykick::Float64 = elem.vkick
@@ -240,11 +241,11 @@ function pm_corrector_pass!(pos::Pos{Float64}, elem::Element)
         pos.px += hkick
         pos.py += vkick
     else
-        px::Float64 = pos.px
-        py::Float64 = pos.py
-        de = pos.de
-        pnorm::Float64 = 1 / (1 + de)
-        norml::Float64 = elem.length * pnorm
+        px::T = pos.px
+        py::T = pos.py
+        de::T = pos.de
+        pnorm::T = 1 / (1 + de)
+        norml::T = elem.length * pnorm
         pos.dl += norml * pnorm * 0.5 * (xkick * xkick/3.0 + ykick * ykick/3.0 + px*px + py*py + px * xkick + py * ykick)
         pos.rx += norml * (px + 0.5 * xkick)
         pos.px += xkick
@@ -255,7 +256,7 @@ function pm_corrector_pass!(pos::Pos{Float64}, elem::Element)
     return st_success
 end
 
-function pm_cavity_pass!(pos::Pos{Float64}, elem::Element, accelerator::Accelerator, turn_number::Int) 
+function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, turn_number::Int) where T
     if accelerator.cavity_state == off
         return pm_drift_pass!(pos, elem)
     end
@@ -272,12 +273,12 @@ function pm_cavity_pass!(pos::Pos{Float64}, elem::Element, accelerator::Accelera
         pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
         #pos.de += -nv * sin(TWOPI * frf * dl / velocity - philag)
     else
-        px::Float64 = pos.px
-        py::Float64 = pos.py
+        px::T = pos.px
+        py::T = pos.py
 
         # Drift half length
-        pnorm::Float64 = 1 / (1 + pos.de)
-        norml::Float64 = (0.5 * elem.length) * pnorm
+        pnorm::T = 1 / (1 + pos.de)
+        norml::T = (0.5 * elem.length) * pnorm
         pos.rx += norml * px
         pos.ry += norml * py
         pos.dl += 0.5 * norml * pnorm * (px*px + py*py)
