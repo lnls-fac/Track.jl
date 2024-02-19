@@ -216,7 +216,7 @@ end
 function linalg_solve6_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
 
     tpsa = false
-    if typeof(D) == Vector{Pos{PowerSeries.Series6{Float64}}}
+    if typeof(A) == Vector{Pos{PowerSeries.Series6{Float64}}}
         tpsa=true
     end
 

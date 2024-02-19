@@ -21,7 +21,7 @@ function Tpsa(val::Any, index::Int; dim::Int=6)
     end
 end
 
-mutable struct Pos{T<:Union{Float64, PowerSeries.Series6}}
+mutable struct Pos{T<:Union{Float64, PowerSeries.Series6{Float64}}}
     rx::T
     px::T
     ry::T
