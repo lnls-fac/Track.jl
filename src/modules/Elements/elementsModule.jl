@@ -102,12 +102,13 @@ function sextupole(fam_name::String, length::Float64, S::Float64; nr_steps::Int=
     return element
 end
 
-function rfcavity(fam_name::String, frequency::Float64, voltage::Float64, phase_lag::Float64)  
+function rfcavity(fam_name::String, frequency::Float64, voltage::Float64, phase_lag::Float64, length::Float64=0.0)  
     element = Element(fam_name)
     element.pass_method = pm_cavity_pass
     element.frequency = frequency
     element.voltage = voltage
     element.phase_lag = phase_lag
+    element.length = length
     return element
 end
 
