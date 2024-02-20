@@ -47,8 +47,8 @@ function _calcpolykick(pos::Pos{T}, polynom_a::Vector{Float64},
     return real_sum, imag_sum
 end
 
-function _b2_perp(bx::T, by::T, px::T, py::T, curv::T=1.0) where T
-    curv2::T = curv^2
+function _b2_perp(bx::T, by::T, px::T, py::T, curv::S=1.0) where {T,S}
+    curv2::S = curv^2
     v_norm2_inv::T = curv2 + px^2 + py^2
     b2p::T = by^2 + bx^2
     b2p *= curv2
