@@ -41,7 +41,7 @@ using PrecompileTools
         m.radiation_state = Auxiliary.full
         m.cavity_state = Auxiliary.on
         m.vchamber_state = Auxiliary.on
-        pf, st, lf = ring_pass(m, p, 1, turn_by_turn=true)
+        pf, st, lf = ring_pass(m, p, 2, turn_by_turn=true)
         find_orbit4(m)
         find_orbit6(m)
     end
