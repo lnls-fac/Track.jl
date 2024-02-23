@@ -322,3 +322,8 @@ end
 function Base.tanh(t::Tpsa{V,N,T}) where {V, N, T}
     return sinh(t) / cosh(t)
 end
+
+# isinfinite
+function Base.isfinite(t::Tpsa{V,N,T}) where {V, N, T}
+    return isfinite(t[0])
+end
