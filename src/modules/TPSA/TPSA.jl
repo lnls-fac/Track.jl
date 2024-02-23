@@ -57,4 +57,11 @@ function Base.show(io::IO, t::Tpsa{V, N, T}) where {V, N, T}
     println(io, "Tpsa{V, N}: $(t.c)")
 end
 
+function Base.convert(::Type{Tpsa{V, N, T}}, x::R) where {V, N, T, R<:Number}
+    return Tpsa{V, N, T}(T(x), 0) 
+end
+function Base.convert(::Type{Tpsa{V, N}}, x::R) where {V, N, R<:Number} 
+    return Tpsa{V, N, Float64}(Float64(x), 0) 
+end
+
 include("TPSA_operators.jl")

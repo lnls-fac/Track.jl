@@ -9,7 +9,7 @@ using ..Auxiliary: PassMethod, Plane, Status, no_plane, on, plane_x, plane_xy, p
     vchamber_ellipse, vchamber_rectangle, vchamber_rhombus, BoolState
 using ..Elements: Element
 using ..PosModule: Pos
-using PowerSeries
+using ..TPSA: Tpsa
 
 
 function element_pass(
@@ -62,7 +62,7 @@ function line_pass(
         error("invalid indices: outside of lattice bounds. The valid indices should stay between 1 and $leng")
     end
     tpsa=false
-    if typeof(particle) == Pos{PowerSeries.Series6{Float64}}
+    if isa(particle.rx, Tpsa)
         tpsa = true
     end
     status::Status = st_success
@@ -148,7 +148,7 @@ function ring_pass(accelerator::Accelerator,
         v = Pos{T}[]
     end
     tpsa=false
-    if typeof(particle) == Pos{PowerSeries.Series6{Float64}}
+    if isa(particle.rx, Tpsa)
         tpsa = true
     end
     tracked = copy(particle)

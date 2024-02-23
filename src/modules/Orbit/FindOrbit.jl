@@ -4,8 +4,8 @@ using ..PosModule: Pos, Pos_get_max
 using ..AcceleratorModule: Accelerator, find_cav_indices
 using ..Elements: Element
 using ..Constants: light_speed
+using ..TPSA: Tpsa
 using LinearAlgebra
-using PowerSeries
 
 export find_orbit4, find_orbit6
 
@@ -21,7 +21,7 @@ function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, fixed
     end
     
     tpsa=false
-    if typeof(fixed_point_guess) == Pos{PowerSeries.Series6{Float64}}
+    if isa(fixed_point_guess.rx, Tpsa)
         tpsa = true
     end
     
@@ -96,7 +96,7 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{T} = Pos(0
     cav::Element = accelerator.lattice[cavidx]
     tpsa=false
 
-    if typeof(fixed_point_guess) == Pos{PowerSeries.Series6{Float64}}
+    if isa(fixed_point_guess.rx, Tpsa)
         tpsa = true
     end
 
@@ -175,7 +175,8 @@ end
 
 function matrix6_set_identity_posvec(D::Vector{Pos{T}}; delta::Union{Float64, Vector{Float64}}=1.0) where T
     tpsa = false
-    if typeof(D) == Vector{Pos{PowerSeries.Series6{Float64}}}
+
+    if isa(D[1].rx, Tpsa)
         tpsa=true
     end
     if isa(delta, Float64)
@@ -193,7 +194,7 @@ end
 function linalg_solve4_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
 
     tpsa = false
-    if typeof(B) == Pos{PowerSeries.Series6{Float64}}
+    if isa(B.rx, Tpsa)
         tpsa=true
     end
 
@@ -223,7 +224,7 @@ end
 function linalg_solve6_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
 
     tpsa = false
-    if typeof(A) == Vector{Pos{PowerSeries.Series6{Float64}}}
+    if isa(B.rx, Tpsa)
         tpsa=true
     end
 

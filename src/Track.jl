@@ -3,6 +3,7 @@ module Track
 
 include("modules/Constants/constantsModule.jl")
 include("modules/Auxiliary/auxiliaryModule.jl")
+include("modules/TPSA/tpsaModule.jl")
 include("modules/Pos/posModule.jl")
 include("modules/Elements/elementsModule.jl")
 include("modules/Accelerator/acceleratorModule.jl")

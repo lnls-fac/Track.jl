@@ -1,5 +1,7 @@
 using Base
 
+###################### auxiliary ########################
+
 # getindex of c
 function Base.getindex(t::Tpsa{V,N,T}, index::Union{Int, UInt}) where {V,N,T}
     return t.c[index + 1]
@@ -157,9 +159,11 @@ function Base.:(==)(a::R, t::Tpsa{V,N,T}) where {V,N,T,R<:Real}
 end
 
 # equal "tpsa"s
-function Base.:(==)(t1::Tpsa{V,N,T}, t2::Tpsa{V,N,T}) where {V,N,T,R<:Real}
+function Base.:(==)(t1::Tpsa{V,N,T}, t2::Tpsa{V,N,T}) where {V,N,T}
     return ((t1 - t2) == T(0))
 end
+
+# not equal -> not necessary: the function "==" do the job
 
 # is less constant
 function Base.:(<)(a::R, t::Tpsa{V,N,T}) where {V,N,T,R<:Real}
@@ -171,8 +175,150 @@ function Base.:(<)(t::Tpsa{V,N,T}, a::R) where {V,N,T,R<:Real}
 end
 
 # is less "tpsa"
-function Base.:(<)(t1::Tpsa{V,N,T}, t2::Tpsa{V,N,T}) where {V,N,T,R<:Real}
+function Base.:(<)(t1::Tpsa{V,N,T}, t2::Tpsa{V,N,T}) where {V,N,T}
     return ((t1 - t2) < T(0))
 end
 
-# is greater constant -> not necessary: the function "<" do the job
+# is greater -> not necessary: the function "<" do the job
+
+#################### math functions ######################
+
+# pow
+function Base.:(^)(t::Tpsa{V,N,T}, a::Union{Int,UInt}) where {V, N, T}
+    r::Tpsa{V,N,T} = copy(t)
+    for _ in 1:a-1
+        r *= t
+    end
+    return r
+end
+
+# abs
+function Base.abs(t::Tpsa{V,N,T}) where {V, N, T}
+    if t >= T(0)
+        return t
+    else
+        return -t
+    end
+end
+
+# sqrt
+function Base.sqrt(t::Tpsa{V,N,T}) where {V, N, T}
+    r::Tpsa{V,N,T} = Tpsa{V, N, T}()
+    x::Tpsa{V,N,T} = copy(t)
+    x[0] = T(0)
+    x /= t[0]
+    p::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
+    f::T = T(1)
+    for i in 0:N
+        r += p * f
+        f *= (0.5 - i)/(i+1)
+        p *= x
+    end
+    r *= sqrt(t[0])
+    return r
+end
+
+# log
+function Base.log(t::Tpsa{V,N,T}) where {V, N, T}
+    r::Tpsa{V,N,T} = Tpsa{V, N, T}()
+    x::Tpsa{V,N,T} = copy(t)
+    x[0] = T(0)
+    x /= t[0]
+    p::Tpsa{V,N,T} = copy(x)
+    for i in 1:N
+        r += p / ((Bool(i&1) ? 1.0 : -1.0) * i)
+        p *= x
+    end
+    r += log(t[0])
+    return r
+end
+
+# cos
+function Base.cos(t::Tpsa{V,N,T}) where {V, N, T}
+    rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
+    rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
+    x::Tpsa{V,N,T} = copy(t)
+    x[0] = T(0)
+    p::Tpsa{V,N,T} = copy(x)
+    fac::ui = 1
+    for i in 1:N
+        if Bool(i&1)
+            rs += (Bool(i&2) ? -1 : 1) * p / fac
+        else
+            rc += (Bool(i&2) ? -1 : 1) * p / fac
+        end
+        p *= x
+        fac *= i + 1
+    end
+    return (cos(t[0]) * rc) - (sin(t[0]) * rs)
+end
+
+# sin
+function Base.sin(t::Tpsa{V,N,T}) where {V, N, T}
+    rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
+    rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
+    x::Tpsa{V,N,T} = copy(t)
+    x[0] = T(0)
+    p::Tpsa{V,N,T} = copy(x)
+    fac::ui = 1
+    for i in 1:N
+        if Bool(i&1)
+            rs += (Bool(i&2) ? -1 : 1) * p / fac
+        else
+            rc += (Bool(i&2) ? -1 : 1) * p / fac
+        end
+        p *= x
+        fac *= i + 1
+    end
+    return (sin(t[0]) * rc) + (cos(t[0]) * rs)
+end
+
+# tan
+function Base.tan(t::Tpsa{V,N,T}) where {V, N, T}
+    return sin(t) / cos(t)
+end
+
+# cosh
+function Base.cosh(t::Tpsa{V,N,T}) where {V, N, T}
+    rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
+    rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
+    x::Tpsa{V,N,T} = copy(t)
+    x[0] = T(0)
+    p::Tpsa{V,N,T} = copy(x)
+    fac::ui = 1
+    for i in 1:N
+        if Bool(i&1)
+            rs += p / fac
+        else
+            rc += p / fac
+        end
+        p *= x
+        fac *= i + 1
+    end
+    return (cosh(t[0]) * rc) + (sinh(t[0]) * rs)
+end
+
+# sinh
+function Base.sinh(t::Tpsa{V,N,T}) where {V, N, T}
+    rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
+    rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
+    x::Tpsa{V,N,T} = copy(t)
+    x[0] = T(0)
+    p::Tpsa{V,N,T} = copy(x)
+    fac::ui = 1
+    for i in 1:N
+        if Bool(i&1)
+            rs += p / fac
+        else
+            rc += p / fac
+        end
+        p *= x
+        fac *= i + 1
+    end
+    return (sinh(t[0]) * rc) - (cosh(t[0]) * rs)
+end
+
+# tanh
+function Base.tanh(t::Tpsa{V,N,T}) where {V, N, T}
+    return sinh(t) / cosh(t)
+end

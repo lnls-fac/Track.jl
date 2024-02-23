@@ -5,7 +5,5 @@ version = "0.1.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-PowerSeries = "84bf69ba-cd12-4c14-afd7-8e4ca43af7cc"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
