@@ -88,8 +88,23 @@ function  Base.:*(scalar::T, m1::Vector{Pos{T}}) where T
     return Vector{Pos{T}}[scalar * v for v in m1]
 end
 
-function  Base.:/(v::Pos{T}, scalar::T) where T
+function  Base.:*(v::Pos{T},  vec::Union{Vector{S}, Array{S}}) where {T, S<:Number}
+    if !(length(vec) == 6)
+        error("vector size above Pos dim (6)")
+    end
+    return Pos(v.rx * vec[1], v.px * vec[2], v.ry * vec[3], v.py * vec[4], v.de * vec[5], v.dl * vec[6])
+end
+
+function  Base.:*(vec::Union{Vector{S}, Array{S}}, v::Pos{T}) where {T, S<:Number}
+    return v * vec
+end
+
+function  Base.:/(v::Pos{T}, scalar::S) where {T, S<:Number}
     return (1 / scalar) * v
+end
+
+function  Base.:/(v::Pos{T}, vec::Union{Vector{S}, Array{S}}) where {T, S<:Number}
+    return (1 ./ vec) * v
 end
 
 function Base.copy(p::Pos{T}) where T
