@@ -76,7 +76,7 @@ end
 
 function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{T} = Pos(0.0)) where T
 
-    xy_delta = 1e-8              # [m],[rad],[dE/E]
+    xy_delta = 1e-8              
     dp_delta = 1e-6
     delta = vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
     tolerance = 1e-15
@@ -108,7 +108,6 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{T} = Pos(0
 
     frf::Float64 = cav.frequency
     longitudinal_fixed_point::Float64 = (accelerator.velocity / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
-    println(stdout, "lng_fxdpt = $longitudinal_fixed_point")
 
     co::Vector{Pos{T}} = fill(fixed_point_guess, 7)
     co2::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 7)

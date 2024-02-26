@@ -9,19 +9,25 @@ include("modules/Elements/elementsModule.jl")
 include("modules/Accelerator/acceleratorModule.jl")
 include("modules/Tracking/trackingModule.jl")
 include("modules/Orbit/orbitModule.jl")
+include("modules/Matrix/matrixModule.jl")
+include("modules/Optics/opticsModule.jl")
 
 using .PosModule: Pos
 using .Elements: Element
 using .AcceleratorModule: Accelerator, find_spos, find_indices
 using .Tracking: element_pass, line_pass, ring_pass
 using .Orbit: find_orbit4, find_orbit6
+using .MatrixModule: find_matrix66
+using .Optics: calc_twiss
 
 export Constants, 
         Auxiliary, 
         Pos, 
         find_spos, find_indices, 
         element_pass, line_pass, ring_pass,
-        find_orbit4, find_orbit6
+        find_orbit4, find_orbit6,
+        find_matrix66,
+        calc_twiss
 
 using PrecompileTools
 
@@ -43,8 +49,8 @@ using PrecompileTools
         m.cavity_state = Auxiliary.on
         m.vchamber_state = Auxiliary.on
         pf, st, lf = ring_pass(m, p, 2, turn_by_turn=true)
-        find_orbit4(m)
-        find_orbit6(m)
+        # find_orbit4(m)
+        # find_orbit6(m)
     end
 end
 
