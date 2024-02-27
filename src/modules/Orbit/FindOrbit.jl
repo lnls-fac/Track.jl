@@ -10,8 +10,8 @@ using LinearAlgebra
 export find_orbit4, find_orbit6
 
 function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
-    delta = 1e-8
-    tolerance = 1e-15
+    delta = 1e-9
+    tolerance = 2.22044604925e-14
     max_nr_iters = 50
     leng = length(accelerator.lattice)
     
@@ -80,10 +80,10 @@ end
 
 function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
 
-    xy_delta = 1e-8
-    dp_delta = 1e-6
-    delta = vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
-    tolerance = 1e-15
+    # xy_delta = 1e-9
+    # dp_delta = 1e-9
+    delta = 1e-9 #vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
+    tolerance = 2.22044604925e-14 
     max_nr_iters = 50
     leng = length(accelerator.lattice)
 
@@ -116,6 +116,7 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
 
     frf::Float64 = cav.frequency
     longitudinal_fixed_point::Float64 = (accelerator.velocity / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
+    #longitudinal_fixed_point::Float64 = (light_speed / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
 
     co::Vector{Pos{T}} = fill(fixed_point_guess, 7)
     co2::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 7)
@@ -213,31 +214,12 @@ function linalg_solve4_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
     end
 
     # Solve the system using LU decomposition
-    x = m \ b
-    # LU = lu(m)
-    # y = LU.L \ b
-    # x = LU.U \ y
-
-    # r = b - M * x
-    # for i in 1:5
-    #     # Solve the correction equation Ax = r
-    #     dx = LU.L \ r
-    #     dx = LU.U \ dx
-        
-    #     # Update the solution
-    #     x += dx
-        
-    #     # Compute the new residual
-    #     r = b - M * x
-    # end
-
+    l, u, p = lu(m)
+    y = l \ b[p]
+    x = u \ y
     
     # Create the solution vector
-    X = Pos(0.0, tpsa=tpsa)
-    X[1] = x[1]
-    X[2] = x[2]
-    X[3] = x[3]
-    X[4] = x[4]
+    X = Pos(x[1],    x[2],    x[3],    x[4],   0.0,    0.0, tpsa=tpsa)
     
     return X
 end
@@ -260,34 +242,12 @@ function linalg_solve6_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
     end
 
     # Solve the system using LU decomposition
-    
-    x = m \ b
-    
-    # LU = lu(m)
-    # y = LU.L \ b
-    # x = LU.U \ y
-
-    # r = b - M * x
-    # for i in 1:5
-    #     # Solve the correction equation Ax = r
-    #     dx = LU.L \ r
-    #     dx = LU.U \ dx
-        
-    #     # Update the solution
-    #     x += dx
-        
-    #     # Compute the new residual
-    #     r = b - M * x
-    # end
+    l, u, p = lu(m)
+    y = l \ b[p]
+    x = u \ y
     
     # Create the solution vector
-    X = Pos(0.0, tpsa=tpsa)
-    X[1] = x[1]
-    X[2] = x[2]
-    X[3] = x[3]
-    X[4] = x[4]
-    X[5] = x[5]
-    X[6] = x[6]
+    X = Pos(x[1],    x[2],    x[3],    x[4],    x[5],    x[6], tpsa=tpsa)
     
     return X
 end

@@ -13,11 +13,20 @@ struct Twiss
     muy
 end
 
-function calc_twiss(accelerator::Accelerator)
+function calc_twiss(accelerator::Accelerator; indices::String="open", method::String="tracking")
+
+    if !(lowercase(method) in ("tracking", "tpsa"))
+        error("invalid mehtod {String}: should be: \"tracking\" or \"tpsa\".")
+    end
+    
+
+    if !(lowercase(indices) in ("open", "closed"))
+        error("invalid indices {String}: should be: \"open\" or \"closed\".")
+    end
 
     fp, _ = find_orbit6(accelerator)
 
-    m66, tm = find_matrix66(accelerator, fp, indices="all")
+    m66, tm = find_matrix66(accelerator, fp, indices=indices, method=method)
     sin_mux0 = 1.0
     sin_muy0 = 1.0
     try

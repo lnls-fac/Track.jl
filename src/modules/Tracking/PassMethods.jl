@@ -49,10 +49,10 @@ end
 
 function _b2_perp(bx::T, by::T, px::T, py::T, curv::S=1.0) where {T,S}
     curv2::S = curv*curv
-    v_norm2_inv::T = curv2 + px*px + py*py
-    b2p::T = by*by + bx*bx
+    v_norm2_inv::T = curv2 + (px*px) + (py*py)
+    b2p::T = (by*by) + (bx*bx)
     b2p *= curv2
-    b2p += (bx * py - by * px)^2 # with tpsa, i didnt checked the speed: pow(x, 2) or x*x
+    b2p += ((bx * py) - (by * px))^2 # with tpsa, i didnt checked the speed: pow(x, 2) or x*x
     b2p /= v_norm2_inv
     return b2p
 end
@@ -153,7 +153,7 @@ function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
 
     steps::Int = elem.nr_steps
 
-    sl::Float64 = elem.length / steps
+    sl::Float64 = elem.length / Float64(steps)
     l1::Float64 = sl * DRIFT1
     l2::Float64 = sl * DRIFT2
     k1::Float64 = sl * KICK1
@@ -217,7 +217,7 @@ function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
 
     _edge_fringe(pos, irho, ang_in, fint_in, gap)
 
-    for i in 1:1:Int(steps)
+    for i in 1:steps
         _drift(pos, l1)
         _bndthinkick(pos, k1, polynom_a, polynom_b, irho, rad_const, 0.0)
         _drift(pos, l2)
@@ -266,12 +266,13 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
     frf::Float64 = elem.frequency
     harmonic_number::Int = accelerator.harmonic_number
     velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
+    #velocity::Float64 = light_speed / 1e8
     L0::Float64 = accelerator.length
     factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
 
     if elem.length == 0
         pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
-        #pos.de += -nv * sin(TWOPI * frf * pos.dl / velocity - philag)
+    
     else
         px::T = pos.px
         py::T = pos.py
@@ -285,7 +286,6 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
 
         # Longitudinal momentum kick
         pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
-        #pos.de += -nv * sin(TWOPI * frf * pos.dl / velocity - philag)
 
         # Drift half length
         pnorm = 1.0 / (1.0 + pos.de)

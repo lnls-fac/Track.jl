@@ -1,22 +1,103 @@
 using ..AcceleratorModule: Accelerator
 using ..PosModule: Pos
-using ..Tracking: element_pass
+using ..Tracking: element_pass, line_pass
 using ..Auxiliary
 using ..TPSA: Tpsa
+using ..Orbit: find_orbit6
 
-function find_matrix66(accelerator::Accelerator, fixed_point::Pos{T}=Pos(0); indices::String="m66") where {T}
+
+function find_matrix66(accelerator::Accelerator, fixed_point::Union{Pos{T},Nothing}=nothing; indices::String="m66", method::String="tracking") where {T}
+    if lowercase(method) == "tracking"
+        return _tracking_find_matrix66(accelerator, fixed_point, indices=indices)
+    elseif lowercase(method) == "tpsa"
+        return _tpsa_find_matrix66(accelerator, fixed_point, indices=indices)
+    else
+        error("invalid mehtod {String}: should be: \"tracking\" or \"tpsa\".")
+    end
+end
+
+function _tracking_find_matrix66(accelerator::Accelerator, fixed_point::Union{Pos{T},Nothing}=nothing; indices::String="m66") where {T}
     
     if lowercase(indices) == "m66"
         return_tm_flag = false
-    elseif lowercase(indices) == "all"
+        plus_idx = -1
+    elseif lowercase(indices) == "open"
         return_tm_flag = true
+        plus_idx = -1
+    elseif lowercase(indices) == "closed"
+        return_tm_flag = true
+        plus_idx = 0
     else
-        error("invalid indices {String}: should be: \"m66\" for only the One-Turn Matrix or \"all\" for the cumulative Matrix in all elements.")
+        error("invalid indices {String}: should be: \"m66\", \"open\" or \"closed\".")
     end
 
     radsts::BoolState = accelerator.radiation_state
     if radsts == full
         accelerator.radiation_state = on
+    end
+
+    if fixed_point === nothing
+        fixed_point, _ = find_orbit6(accelerator)
+    end
+
+    # gen and track 12 particles
+    scaling = 1e-8*[1, 1, 1, 1, 0, 0] + 1e-6*[0, 0, 0, 0, 1, 1]
+    particles_in = [Pos(fixed_point[:]) for _ in 1:12]
+    particles_tracked = Vector{Pos{Float64}}[]
+    sig = 1
+    for i in 1:12
+        idx = Int(ceil(i/2))
+        particles_in[i][idx] += scaling[idx] * sig / 2.0
+        out, _, _ = line_pass(accelerator, particles_in[i], "closed")
+        push!(particles_tracked, out)
+        sig *= -1
+    end
+
+    # construct the 66 matrices from tracked particles
+    leng = length(particles_tracked[1])
+    mat = zeros(Float64, (6,6,leng))
+    for k in 1:leng
+        for i in 1:2:12
+            pp = particles_tracked[i][k][:]
+            pm = particles_tracked[i+1][k][:]
+            idx = Int(ceil(i/2))
+            v = (pp .- pm) ./ scaling[idx]
+            mat[:, idx, k] .= v
+        end
+    end
+    m66 = mat[:, :, end]
+    mat = [mat[:, :, j] for j in 1:leng+plus_idx]
+
+    # returns
+    if return_tm_flag
+        return m66, mat
+    end
+    return m66
+
+end
+
+function _tpsa_find_matrix66(accelerator::Accelerator, fixed_point::Union{Pos{T}, Nothing}=nothing; indices::String="m66") where {T}
+    
+    if lowercase(indices) == "m66"
+        return_tm_flag = false
+        plus_idx = -1
+    elseif lowercase(indices) == "open"
+        return_tm_flag = true
+        plus_idx = -1
+    elseif lowercase(indices) == "closed"
+        return_tm_flag = true
+        plus_idx = 0
+    else
+        error("invalid indices {String}: should be: \"m66\", \"open\" or \"closed\".")
+    end
+
+    radsts::BoolState = accelerator.radiation_state
+    if radsts == full
+        accelerator.radiation_state = on
+    end
+
+    if fixed_point === nothing
+        fixed_point, _ = find_orbit6(accelerator)
     end
 
     map::Pos{Tpsa{6, 1, Float64}} = Pos(fixed_point[:], tpsa=true) 
@@ -28,12 +109,15 @@ function find_matrix66(accelerator::Accelerator, fixed_point::Pos{T}=Pos(0); ind
     for elem in accelerator.lattice
         element_pass(elem, map, accelerator)
         if return_tm_flag
-            mat = extract_m66(map)
+            mat = _extract_m66(map)
             push!(tm, mat)
         end
     end
 
-    m66 = extract_m66(map)
+    m66 = _extract_m66(map)
+    if plus_idx == 0
+        push!(tm, m66)
+    end
 
     accelerator.radiation_state = radsts
 
@@ -45,7 +129,7 @@ function find_matrix66(accelerator::Accelerator, fixed_point::Pos{T}=Pos(0); ind
 end
 
 
-function extract_m66(p::Pos{Tpsa{6, 1, Float64}})
+function _extract_m66(p::Pos{Tpsa{6, 1, Float64}})
     return [
         p.rx[1] p.rx[2] p.rx[3] p.rx[4] p.rx[5] p.rx[6];
         p.px[1] p.px[2] p.px[3] p.px[4] p.px[5] p.px[6];
