@@ -129,8 +129,12 @@ function setproperty!(accelerator::Accelerator, symbol::Symbol, value)
 end
 
 function find_spos(accelerator::Accelerator; indices::T="open") where T<:Union{String, Vector{Int}}
-    spos::Vector{Float64} = append!([0.0], [elem.length for elem in accelerator.lattice])
-    spos = cumsum(spos)
+    spos::Vector{Float64} = Float64[0.0]
+    s_temp = 0.0
+    for elem in accelerator.lattice
+        s_temp += elem.length
+        push!(spos, s_temp)
+    end
     if isa(indices, String)
         if indices == "open"
             return spos[1:end-1]

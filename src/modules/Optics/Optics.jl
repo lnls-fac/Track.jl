@@ -27,14 +27,14 @@ function calc_twiss(accelerator::Accelerator)
     betax0  =  m66[0+1,1+1]/sin_mux0
     betay0  =  m66[2+1,3+1]/sin_muy0
 
-    betax = []
-    betay = []
-    alphax = []
-    alphay = []
-    mux = []
-    muy = []
+    betax = [betax0]
+    betay = [betay0]
+    alphax = [alphax0]
+    alphay = [alphay0]
+    mux = [asin(sin_mux0)]
+    muy = [asin(sin_muy0)]
 
-    for m in tm
+    for m in tm[1:end-1]
         _betax = ((m[0+1, 1+0] * betax0 - m[0+1, 1+1] * alphax0)^2 + (m[0+1, 1+1])^2) / betax0;
         _betay = ((m[2+1, 1+2] * betay0 - m[2+1, 1+3] * alphay0)^2 + (m[2+1, 1+3])^2) / betay0;
         _alphax = -((m[0+1, 1+0] * betax0 - m[0+1, 1+1] * alphax0) * (m[1+1, 1+0] * betax0 - m[1+1, 1+1] * alphax0) + m[0+1, 1+1]*m[1+1, 1+1])/betax0;

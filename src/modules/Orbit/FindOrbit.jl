@@ -9,12 +9,16 @@ using LinearAlgebra
 
 export find_orbit4, find_orbit6
 
-function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, fixed_point_guess::Pos{T} = Pos(0.0)) where T
-    delta = 1e-9              # [m],[rad],[dE/E]
-    tolerance = 2.22044604925e-14
+function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
+    delta = 1e-8
+    tolerance = 1e-15
     max_nr_iters = 50
     leng = length(accelerator.lattice)
     
+    if !(1 <= element_offset <= leng)
+        error("element_offset should be >= 1 and <= $leng")
+    end
+
     radsts::BoolState = accelerator.radiation_state
     if radsts == full
         accelerator.radiation_state = on
@@ -69,20 +73,24 @@ function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, fixed
         return Pos{T}[], st_findorbit_not_converged
     end
     
-    closed_orbit, _, _ = line_pass(accelerator, co[7], "open")
+    closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
     accelerator.radiation_state = radsts
     return closed_orbit, st_success
 end
 
-function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{T} = Pos(0.0)) where T
+function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
 
-    xy_delta = 1e-8              
+    xy_delta = 1e-8
     dp_delta = 1e-6
     delta = vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
     tolerance = 1e-15
     max_nr_iters = 50
     leng = length(accelerator.lattice)
-    
+
+    if !(1 <= element_offset <= leng)
+        error("element_offset should be >= 1 and <= $leng")
+    end
+
     radsts::BoolState = accelerator.radiation_state
     if radsts == full
         accelerator.radiation_state = on
@@ -128,7 +136,7 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{T} = Pos(0
 
         status = st_success
         for i in [1, 2, 3, 4, 5, 6, 7]
-            pf, status, _ = line_pass(accelerator, co[i], [leng+1])
+            pf, status, _ = line_pass(accelerator, co[i], "end")
             co2[i] = copy(pf[1])
         end
 
@@ -139,18 +147,15 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{T} = Pos(0
         Rf = copy(co2[7]) # is *1e8 bigger
         
         M[1] = (co2[1] - Rf) / (delta)
-        
         M[2] = (co2[2] - Rf) / (delta)
         M[3] = (co2[3] - Rf) / (delta)
         M[4] = (co2[4] - Rf) / (delta)
         M[5] = (co2[5] - Rf) / (delta)
         M[6] = (co2[6] - Rf) / (delta)
-        
         b = (Rf - Ri) - theta
         
         M_1 = fill(Pos(0.0, tpsa=tpsa), 6)
         M_1 = matrix6_set_identity_posvec(M_1)
-        
         M_1 = M_1 - M # is *1e8 bigger
         
         dco = Pos(0.0, tpsa=tpsa)
@@ -167,7 +172,7 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{T} = Pos(0
         return Pos{T}[], st_findorbit_not_converged
     end
     
-    closed_orbit, _, _ = line_pass(accelerator, co[7], "open")
+    closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
     accelerator.radiation_state = radsts
     return closed_orbit, st_success
 end
@@ -208,7 +213,23 @@ function linalg_solve4_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
     end
 
     # Solve the system using LU decomposition
-    x .= m \ b
+    LU = lu(m)
+    y = LU.L \ b
+    x = LU.U \ y
+
+    r = b - M * x
+    for i in 1:5
+        # Solve the correction equation Ax = r
+        dx = LU.L \ r
+        dx = LU.U \ dx
+        
+        # Update the solution
+        x += dx
+        
+        # Compute the new residual
+        r = b - M * x
+    end
+
     
     # Create the solution vector
     X = Pos(0.0, tpsa=tpsa)
@@ -238,7 +259,22 @@ function linalg_solve6_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
     end
 
     # Solve the system using LU decomposition
-    x .= m \ b
+    LU = lu(m)
+    y = LU.L \ b
+    x = LU.U \ y
+
+    r = b - M * x
+    for i in 1:5
+        # Solve the correction equation Ax = r
+        dx = LU.L \ r
+        dx = LU.U \ dx
+        
+        # Update the solution
+        x += dx
+        
+        # Compute the new residual
+        r = b - M * x
+    end
     
     # Create the solution vector
     X = Pos(0.0, tpsa=tpsa)

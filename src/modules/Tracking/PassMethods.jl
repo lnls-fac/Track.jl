@@ -48,11 +48,11 @@ function _calcpolykick(pos::Pos{T}, polynom_a::Vector{Float64},
 end
 
 function _b2_perp(bx::T, by::T, px::T, py::T, curv::S=1.0) where {T,S}
-    curv2::S = curv^2
-    v_norm2_inv::T = curv2 + px^2 + py^2
-    b2p::T = by^2 + bx^2
+    curv2::S = curv*curv
+    v_norm2_inv::T = curv2 + px*px + py*py
+    b2p::T = by*by + bx*bx
     b2p *= curv2
-    b2p += (bx * py - by * px)^2
+    b2p += (bx * py - by * px)^2 # with tpsa, i didnt checked the speed: pow(x, 2) or x*x
     b2p /= v_norm2_inv
     return b2p
 end
@@ -70,13 +70,13 @@ function _strthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
         py::T = pos.py * pnorm
         b2p::T = 0.0
         b2p = _b2_perp(imag_sum, real_sum, px, py)
-        delta_factor::T  = (1 + pos.de)^2
+        delta_factor::T  = (1 + pos.de) * (1 + pos.de)
         dl_ds::T  = 1.0 + ((px*px + py*py) / 2)
         pos.de -= rad_const * delta_factor * b2p * dl_ds * length
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::T = delta_factor * qexcit_const * sqrt(b2p^1.5 * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(sqrt(b2p*b2p*b2p) * dl_ds)
             pos.de += d * randn()
         end
 
@@ -104,13 +104,13 @@ function _bndthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
         curv::T = 1.0 + (irho * pos.rx)
         b2p::T = 0.0
         b2p = _b2_perp(imag_sum, real_sum+irho, px, py, curv)
-        delta_factor::T = (1 + pos.de)^2
+        delta_factor::T = (1 + pos.de) * (1 + pos.de)
         dl_ds::T = curv + ((px*px + py*py) / 2)
         pos.de -= rad_const * delta_factor * b2p * dl_ds * length
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::T = delta_factor * qexcit_const * sqrt(b2p^1.5 * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(sqrt(b2p*b2b*b2p) * dl_ds)
             pos.de += d * randn()
         end
 
@@ -265,13 +265,13 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
     philag::Float64 = elem.phase_lag
     frf::Float64 = elem.frequency
     harmonic_number::Int = accelerator.harmonic_number
-    velocity::Float64 = light_speed / 1e8 #accelerator.velocity #/ 1e8 # numerical problem
+    velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
     L0::Float64 = accelerator.length
     factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
 
     if elem.length == 0
-        #pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
-        pos.de += -nv * sin(TWOPI * frf * pos.dl / velocity - philag)
+        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
+        #pos.de += -nv * sin(TWOPI * frf * pos.dl / velocity - philag)
     else
         px::T = pos.px
         py::T = pos.py
@@ -284,8 +284,8 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
         pos.dl += 0.5 * norml * pnorm * (px*px + py*py)
 
         # Longitudinal momentum kick
-        #pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
-        pos.de += -nv * sin(TWOPI * frf * pos.dl / velocity - philag)
+        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
+        #pos.de += -nv * sin(TWOPI * frf * pos.dl / velocity - philag)
 
         # Drift half length
         pnorm = 1.0 / (1.0 + pos.de)
