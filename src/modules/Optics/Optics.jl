@@ -16,12 +16,16 @@ end
 function calc_twiss(accelerator::Accelerator)
 
     fp, _ = find_orbit6(accelerator)
-    fp = fp[end]
 
     m66, tm = find_matrix66(accelerator, fp, indices="all")
-
-    sin_mux0 = sign(m66[0+1,1+1]) * sqrt(-m66[0+1,1+1]*m66[1+1,0+1] - (m66[0+1,0+1]-m66[1+1,1+1])^2/4.0)
-    sin_muy0 = sign(m66[2+1,3+1]) * sqrt(-m66[2+1,3+1]*m66[3+1,2+1] - (m66[2+1,2+1]-m66[3+1,3+1])^2/4.0)
+    sin_mux0 = 1.0
+    sin_muy0 = 1.0
+    try
+        sin_mux0 = sign(m66[0+1,1+1]) * sqrt(-m66[0+1,1+1]*m66[1+1,0+1] - (m66[0+1,0+1]-m66[1+1,1+1])^2/4.0)
+        sin_muy0 = sign(m66[2+1,3+1]) * sqrt(-m66[2+1,3+1]*m66[3+1,2+1] - (m66[2+1,2+1]-m66[3+1,3+1])^2/4.0)        
+    catch e
+        println("error = ", e, " sin_mux = $sin_mux0")
+    end
     alphax0 = (m66[0+1,0+1]-m66[1+1,1+1])/2.0/sin_mux0
     alphay0 = (m66[2+1,2+1]-m66[3+1,3+1])/2.0/sin_muy0
     betax0  =  m66[0+1,1+1]/sin_mux0

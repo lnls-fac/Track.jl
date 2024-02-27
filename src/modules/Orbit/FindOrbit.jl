@@ -49,7 +49,7 @@ function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, eleme
             co2[i] = copy(pf[1])
         end
         if status != st_success
-            return Pos{T}[], st_findorbit_one_turn_matrix_problem
+            return Pos(0), st_findorbit_one_turn_matrix_problem
         end
 
         Rf = copy(co2[5])
@@ -70,12 +70,12 @@ function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, eleme
     end
     
     if nr_iter > max_nr_iters
-        return Pos{T}[], st_findorbit_not_converged
+        return Pos(0), st_findorbit_not_converged
     end
     
     closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
     accelerator.radiation_state = radsts
-    return closed_orbit, st_success
+    return closed_orbit[1], st_success
 end
 
 function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
@@ -98,7 +98,7 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
 
     cav_indices::Vector{Int} = find_cav_indices(accelerator)
     if isempty(cav_indices)
-        return Pos[], st_no_cavities_found
+        return Pos(0), st_no_cavities_found
     end
     cavidx::Int = cav_indices[1]
     cav::Element = accelerator.lattice[cavidx]
@@ -141,7 +141,7 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
         end
 
         if status != st_success
-            return Pos{T}[], st_findorbit_one_turn_matrix_problem
+            return Pos(0), st_findorbit_one_turn_matrix_problem
         end
 
         Rf = copy(co2[7]) # is *1e8 bigger
@@ -169,12 +169,12 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
     end
     
     if nr_iter > max_nr_iters
-        return Pos{T}[], st_findorbit_not_converged
+        return Pos(0), st_findorbit_not_converged
     end
     
     closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
     accelerator.radiation_state = radsts
-    return closed_orbit, st_success
+    return closed_orbit[1], st_success
 end
 
 function matrix6_set_identity_posvec(D::Vector{Pos{T}}; delta::Union{Float64, Vector{Float64}}=1.0) where T
@@ -213,22 +213,23 @@ function linalg_solve4_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
     end
 
     # Solve the system using LU decomposition
-    LU = lu(m)
-    y = LU.L \ b
-    x = LU.U \ y
+    x = m \ b
+    # LU = lu(m)
+    # y = LU.L \ b
+    # x = LU.U \ y
 
-    r = b - M * x
-    for i in 1:5
-        # Solve the correction equation Ax = r
-        dx = LU.L \ r
-        dx = LU.U \ dx
+    # r = b - M * x
+    # for i in 1:5
+    #     # Solve the correction equation Ax = r
+    #     dx = LU.L \ r
+    #     dx = LU.U \ dx
         
-        # Update the solution
-        x += dx
+    #     # Update the solution
+    #     x += dx
         
-        # Compute the new residual
-        r = b - M * x
-    end
+    #     # Compute the new residual
+    #     r = b - M * x
+    # end
 
     
     # Create the solution vector
@@ -259,22 +260,25 @@ function linalg_solve6_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
     end
 
     # Solve the system using LU decomposition
-    LU = lu(m)
-    y = LU.L \ b
-    x = LU.U \ y
+    
+    x = m \ b
+    
+    # LU = lu(m)
+    # y = LU.L \ b
+    # x = LU.U \ y
 
-    r = b - M * x
-    for i in 1:5
-        # Solve the correction equation Ax = r
-        dx = LU.L \ r
-        dx = LU.U \ dx
+    # r = b - M * x
+    # for i in 1:5
+    #     # Solve the correction equation Ax = r
+    #     dx = LU.L \ r
+    #     dx = LU.U \ dx
         
-        # Update the solution
-        x += dx
+    #     # Update the solution
+    #     x += dx
         
-        # Compute the new residual
-        r = b - M * x
-    end
+    #     # Compute the new residual
+    #     r = b - M * x
+    # end
     
     # Create the solution vector
     X = Pos(0.0, tpsa=tpsa)

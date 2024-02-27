@@ -32,7 +32,7 @@ end
 # sum constant
 function Base.:+(t::Tpsa{V,N,T}, a::R) where {V,N,T,R<:Real}
     r::Tpsa{V,N,T} = copy(t)
-    r[0] += T(a)
+    @inbounds r[0] += T(a)
     return r
 end
 
@@ -45,7 +45,7 @@ end
 function Base.:+(t1::Tpsa{V,N,T}, t2::Tpsa{V,N,T}) where {V,N,T}
     r::Tpsa{V,N,T} = copy(t1)
     for i in 1:length(r)
-        r.c[i] += t2.c[i]
+        @inbounds r.c[i] += t2.c[i]
     end
     return r
 end
@@ -61,7 +61,7 @@ end
 function Base.:-(t1::Tpsa{V,N,T}, t2::Tpsa{V,N,T}) where {V,N,T}
     r::Tpsa{V,N,T} = copy(t1)
     for i in 1:length(r)
-        r.c[i] -= t2.c[i]
+        @inbounds r.c[i] -= t2.c[i]
     end
     return r
 end
@@ -70,7 +70,7 @@ end
 function Base.:-(t1::Tpsa{V,N,T}) where {V,N,T}
     r::Tpsa{V,N,T} = copy(t1)
     for i in 1:length(r)
-        r.c[i] = -(r.c[i])
+        @inbounds r.c[i] = -(r.c[i])
     end
     return r
 end
@@ -86,7 +86,7 @@ end
 function Base.:*(t::Tpsa{V,N,T}, a::R) where {V,N,T,R<:Real}
     r::Tpsa{V,N,T} = copy(t)
     for i in 1:length(r)
-        r.c[i] *= T(a)
+        @inbounds r.c[i] *= T(a)
     end
     return r
 end
@@ -100,11 +100,11 @@ function Base.:*(t1::Tpsa{V,N,T}, t2::Tpsa{V,N,T}) where {V,N,T}
     r::Tpsa{V,N,T} = Tpsa{V,N,T}()
     counter::ui = 1
     for n1::ui in 0:N
-        for i1::ui in r.first_at_order(n1):r.last_at_order(n1)-1
+        for i1::ui in tpsa_global_params[V,N].first_at_order(n1):tpsa_global_params[V,N].last_at_order(n1)-1
             n2::ui = 0
             while n1+n2 <= N
-                for i2::ui in r.first_at_order(n2):r.last_at_order(n2)-1
-                    r[tpsa_global_params[V,N].osip[counter]] += t1[i1] * t2[i2]
+                for i2::ui in tpsa_global_params[V,N].first_at_order(n2):tpsa_global_params[V,N].last_at_order(n2)-1
+                    @inbounds r[tpsa_global_params[V,N].osip[counter]] += t1[i1] * t2[i2]
                     counter += 1
                 end
                 n2 += 1
@@ -119,9 +119,9 @@ end
 # invert tpsa
 function inverse(t::Tpsa{V,N,T}) where {V, N, T}
     r::Tpsa{V,N,T} = Tpsa{V,N,T}()
-    a::T = t[0]
+    @inbounds a::T = t[0]
     x::Tpsa{V,N,T} = copy(t)
-    x[0] = T(0)
+    @inbounds x[0] = T(0)
     x /= a
     p::Tpsa{V,N,T} = Tpsa{V,N,T}(1, 0)
     for i in 0:N
@@ -151,11 +151,11 @@ end
 
 # equal constant
 function Base.:(==)(t::Tpsa{V,N,T}, a::R) where {V,N,T,R<:Real}
-    return (t[0] == T(a))
+    @inbounds return (t[0] == T(a))
 end
 
 function Base.:(==)(a::R, t::Tpsa{V,N,T}) where {V,N,T,R<:Real}
-    return (t[0] == T(a))
+    @inbounds return (t[0] == T(a))
 end
 
 # equal "tpsa"s
@@ -167,11 +167,11 @@ end
 
 # is less constant
 function Base.:(<)(a::R, t::Tpsa{V,N,T}) where {V,N,T,R<:Real}
-    return (T(a) < t[0])
+    @inbounds return (T(a) < t[0])
 end
 
 function Base.:(<)(t::Tpsa{V,N,T}, a::R) where {V,N,T,R<:Real}
-    return (t[0] < T(a))
+    @inbounds return (t[0] < T(a))
 end
 
 # is less "tpsa"
@@ -205,8 +205,8 @@ end
 function Base.sqrt(t::Tpsa{V,N,T}) where {V, N, T}
     r::Tpsa{V,N,T} = Tpsa{V, N, T}()
     x::Tpsa{V,N,T} = copy(t)
-    x[0] = T(0)
-    x /= t[0]
+    @inbounds x[0] = T(0)
+    @inbounds x /= t[0]
     p::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
     f::T = T(1)
     for i in 0:N
@@ -214,7 +214,7 @@ function Base.sqrt(t::Tpsa{V,N,T}) where {V, N, T}
         f *= (0.5 - i)/(i+1)
         p *= x
     end
-    r *= sqrt(t[0])
+    @inbounds r *= sqrt(t[0])
     return r
 end
 
@@ -222,14 +222,14 @@ end
 function Base.log(t::Tpsa{V,N,T}) where {V, N, T}
     r::Tpsa{V,N,T} = Tpsa{V, N, T}()
     x::Tpsa{V,N,T} = copy(t)
-    x[0] = T(0)
-    x /= t[0]
+    @inbounds x[0] = T(0)
+    @inbounds x /= t[0]
     p::Tpsa{V,N,T} = copy(x)
     for i in 1:N
         r += p / ((Bool(i&1) ? 1.0 : -1.0) * i)
         p *= x
     end
-    r += log(t[0])
+    @inbounds r += log(t[0])
     return r
 end
 
@@ -238,7 +238,7 @@ function Base.cos(t::Tpsa{V,N,T}) where {V, N, T}
     rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
     rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
     x::Tpsa{V,N,T} = copy(t)
-    x[0] = T(0)
+    @inbounds x[0] = T(0)
     p::Tpsa{V,N,T} = copy(x)
     fac::ui = 1
     for i in 1:N
@@ -250,7 +250,7 @@ function Base.cos(t::Tpsa{V,N,T}) where {V, N, T}
         p *= x
         fac *= i + 1
     end
-    return (cos(t[0]) * rc) - (sin(t[0]) * rs)
+    @inbounds return (cos(t[0]) * rc) - (sin(t[0]) * rs)
 end
 
 # sin
@@ -258,7 +258,7 @@ function Base.sin(t::Tpsa{V,N,T}) where {V, N, T}
     rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
     rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
     x::Tpsa{V,N,T} = copy(t)
-    x[0] = T(0)
+    @inbounds x[0] = T(0)
     p::Tpsa{V,N,T} = copy(x)
     fac::ui = 1
     for i in 1:N
@@ -270,7 +270,7 @@ function Base.sin(t::Tpsa{V,N,T}) where {V, N, T}
         p *= x
         fac *= i + 1
     end
-    return (sin(t[0]) * rc) + (cos(t[0]) * rs)
+    @inbounds return (sin(t[0]) * rc) + (cos(t[0]) * rs)
 end
 
 # tan
@@ -283,7 +283,7 @@ function Base.cosh(t::Tpsa{V,N,T}) where {V, N, T}
     rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
     rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
     x::Tpsa{V,N,T} = copy(t)
-    x[0] = T(0)
+    @inbounds x[0] = T(0)
     p::Tpsa{V,N,T} = copy(x)
     fac::ui = 1
     for i in 1:N
@@ -295,7 +295,7 @@ function Base.cosh(t::Tpsa{V,N,T}) where {V, N, T}
         p *= x
         fac *= i + 1
     end
-    return (cosh(t[0]) * rc) + (sinh(t[0]) * rs)
+    @inbounds return (cosh(t[0]) * rc) + (sinh(t[0]) * rs)
 end
 
 # sinh
@@ -303,7 +303,7 @@ function Base.sinh(t::Tpsa{V,N,T}) where {V, N, T}
     rc::Tpsa{V,N,T} = Tpsa{V, N, T}(1.0, 0)
     rs::Tpsa{V,N,T} = Tpsa{V, N, T}()
     x::Tpsa{V,N,T} = copy(t)
-    x[0] = T(0)
+    @inbounds x[0] = T(0)
     p::Tpsa{V,N,T} = copy(x)
     fac::ui = 1
     for i in 1:N
@@ -315,7 +315,7 @@ function Base.sinh(t::Tpsa{V,N,T}) where {V, N, T}
         p *= x
         fac *= i + 1
     end
-    return (sinh(t[0]) * rc) - (cosh(t[0]) * rs)
+    @inbounds return (sinh(t[0]) * rc) - (cosh(t[0]) * rs)
 end
 
 # tanh
@@ -325,5 +325,5 @@ end
 
 # isinfinite
 function Base.isfinite(t::Tpsa{V,N,T}) where {V, N, T}
-    return isfinite(t[0])
+    @inbounds return isfinite(t[0])
 end

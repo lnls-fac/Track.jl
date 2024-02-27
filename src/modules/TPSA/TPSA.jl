@@ -3,12 +3,6 @@ include("TPSA_aux.jl")
 mutable struct Tpsa{V, N, T}
     c::Vector{T}
 
-    # functions
-    first_at_order ::Function
-    last_at_order  ::Function
-    get_power      ::Function
-    get_index      ::Function
-
     function Tpsa{V, N, T}(a::X, v::Union{Int, UInt}) where {V, N, T, X<:Number}
         _c = zeros(T, binomial(V+N, N))
         _c[1] = T(a)
@@ -18,8 +12,7 @@ mutable struct Tpsa{V, N, T}
         if !haskey(tpsa_global_params, (V,N))
             init_tpsa_params(V, N)
         end
-        f = TPSA_Aux_Funcs(v=V, n=N)
-        new{V, N, T}(_c, f.first_at_order, f.last_at_order, f.get_power, f.get_index)
+        new{V, N, T}(_c)
     end
 
     function Tpsa{V, N}(a::X, v::Union{Int, UInt}) where {V, N, X <: Number}
@@ -43,8 +36,7 @@ mutable struct Tpsa{V, N, T}
         if !haskey(tpsa_global_params, (V,N))
             init_tpsa_params(V, N)
         end
-        f = TPSA_Aux_Funcs(v=V, n=N)
-        new{V, N, T}(_c, f.first_at_order, f.last_at_order, f.get_power, f.get_index)
+        new{V, N, T}(_c)
     end
 
     function Tpsa{V, N}(vec::Union{Array{X}, Vector{X}}) where {V, N, X<:Number}

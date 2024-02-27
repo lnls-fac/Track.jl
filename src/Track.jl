@@ -49,8 +49,10 @@ using PrecompileTools
         m.cavity_state = Auxiliary.on
         m.vchamber_state = Auxiliary.on
         pf, st, lf = ring_pass(m, p, 2, turn_by_turn=true)
-        # find_orbit4(m)
-        # find_orbit6(m)
+        #find_orbit4(m)
+        find_orbit6(m)
+        find_matrix66(m)
+        calc_twiss(m)
     end
 end
 
