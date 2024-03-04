@@ -83,7 +83,7 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
     # xy_delta = 1e-9
     # dp_delta = 1e-9
     delta = 1e-9 #vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
-    tolerance = 5e-16 #2.22044604925e-14
+    tolerance = 2.22044604925e-14
     max_nr_iters = 50
     leng = length(accelerator.lattice)
 
