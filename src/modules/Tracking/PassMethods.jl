@@ -1,6 +1,6 @@
 
 import Base: !=, getproperty, setfield!, setproperty!
-
+using Printf
 using ..AcceleratorModule: Accelerator
 using ..Auxiliary: full, no_plane, off, on, pm_bnd_mpole_symplectic4_pass, pm_cavity_pass,
     pm_corrector_pass, pm_drift_pass, pm_identity_pass, pm_str_mpole_symplectic4_pass,
@@ -274,17 +274,24 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
     philag::Float64 = elem.phase_lag
     frf::Float64 = elem.frequency
     harmonic_number::Int = accelerator.harmonic_number
-    velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
-    # velocity::Float64 = light_speed / 1e8
-    L0::Float64 = accelerator.length
-    factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
-    # if factor != 0.0
-    #     println("factor = $factor")
-    # end
+
+    # not ATCOMPATIBLE
+    #velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
+    # ATCOMPATIBLE
+    velocity::Float64 = light_speed #/ 1e8
+
+    # L0::Float64 = accelerator.length
+    # factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
 
     if elem.length == 0.0
-        pos.de += -nv * sin((TWOPI * frf /1e8* ((pos.dl/velocity/1e8) - (factor*turn_number))) * 1e8 - philag)
-    
+        #pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
+        fd::Float64 = TWOPI * frf * pos.dl / velocity  - philag
+        # @printf("fd = %+.100e\n", fd)
+        # @printf("sin(fd) = %+.100e\n", sin(fd))
+        # @printf("-nv * sin(fd) = %+.100e\n", -nv*sin(fd))
+        # @printf("antes  -- de = %+.100e\n", pos.de)
+        pos.de += -nv * mysin(TWOPI * frf * pos.dl / velocity  - philag)
+        # @printf("depois -- de = %+.100e\n", pos.de)
     else
         px::T = pos.px
         py::T = pos.py
@@ -297,7 +304,8 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
         pos.dl += 0.5 * norml * pnorm * (px*px + py*py)
 
         # Longitudinal momentum kick
-        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
+        # pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
+        pos.de += -nv * mysin(TWOPI * frf * pos.dl / velocity  - philag)
 
         # Drift half length
         pnorm = 1.0 / (1.0 + pos.de)
@@ -308,4 +316,12 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
     end
 
     return st_success
+end
+
+function mysin(x::T) where T
+    if isa(x, Number)
+        return sinpi(x/pi)
+    else
+        return sin(x)
+    end
 end

@@ -121,7 +121,7 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
     # longitudinal_fixed_point::Float64 = (accelerator.velocity / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
     
     # ATCOMPATIBLE
-    longitudinal_fixed_point::Float64 = (light_speed / 1e8 * accelerator.harmonic_number / frf) - accelerator.length
+    longitudinal_fixed_point::Float64 = (light_speed / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
 
     co::Vector{Pos{T}} = fill(fixed_point_guess, 7)
     co2::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 7)
