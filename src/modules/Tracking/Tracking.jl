@@ -11,7 +11,6 @@ using ..Elements: Element
 using ..PosModule: Pos
 using ..TPSA: Tpsa
 
-
 function element_pass(
     element::Element,            # element through which to track particle
     particle::Pos{T},      # initial electron coordinates
@@ -66,7 +65,8 @@ function line_pass(
         tpsa = true
     end
     status::Status = st_success
-    lost_plane::Plane = no_plane
+    lostplane::Plane = no_plane
+    lostelement::Int64 = 0
     tracked_pos::Vector{Pos{T}} = Pos{T}[]
 
     line::Vector{Element} = accelerator.lattice
@@ -76,29 +76,35 @@ function line_pass(
     indcs::Vector{Bool} = falses(nr_elements + 1)
     indcs[indices] .= true
 
-    pos::Pos{T} = particle
-
     for i in 1:nr_elements
         # Read-only access to element object parameters
         element::Element = line[element_offset]
 
         # Stores trajectory at entrance of each element
         if indcs[i]
-            push!(tracked_pos, copy(pos))
+            push!(tracked_pos, copy(particle))
         end
 
-        status = element_pass(element, pos, accelerator, turn_number=turn_number)
+        status = element_pass(element, particle, accelerator, turn_number=turn_number)
 
-        _check_if_lost!(element, pos.rx, pos.ry, status, lost_plane, accelerator.vchamber_state)
+        status, lostplane = _check_if_lost!(element, particle.rx, particle.ry, accelerator.vchamber_state)
 
         if status != st_success
+            nan_particle::Pos{T} = Pos(NaN,tpsa=tpsa)
+            lostelement = i
             # Fill the rest of vector with NaNs
-            for j in i+1:Int(length(indcs))
+            for j in i+1:length(indcs)
                 if indcs[j]
-                    push!(tracked_pos, Pos(NaN,tpsa=tpsa))
+                    push!(tracked_pos, copy(nan_particle))
                 end
             end
-            return tracked_pos, status, lost_plane
+            particle.rx = nan_particle.rx 
+            particle.ry = nan_particle.ry
+            particle.px = nan_particle.px
+            particle.py = nan_particle.py
+            particle.de = nan_particle.de
+            particle.dl = nan_particle.dl
+            return tracked_pos, status, lostplane, lostelement
         end
 
         # Moves to the next element index
@@ -107,11 +113,10 @@ function line_pass(
 
     # Stores final particle position at the end of the line
     if indcs[nr_elements+1]
-        push!(tracked_pos, copy(pos))
+        push!(tracked_pos, copy(particle))
     end
-
-    #println(stdout, "linepass posvec exit = \n$tracked_pos\n")
-    return tracked_pos, status, lost_plane
+    particle = copy(tracked_pos[end])
+    return tracked_pos, status, lostplane, lostelement
 end
 
 function line_pass(
@@ -151,30 +156,35 @@ function ring_pass(accelerator::Accelerator,
     if isa(particle.rx, Tpsa)
         tpsa = true
     end
-    tracked = copy(particle)
     lostplane = no_plane
     st = st_success
-    for turn in 1:1:nr_turns
-        tracked, st, lostplane = line_pass(accelerator, tracked, [length(accelerator.lattice)], element_offset=element_offset, turn_number=turn-1)
+    lostturn = -1
+    lostelement = 0
+    for turn in 1:nr_turns
+        _, st, lostplane, lostelement = line_pass(accelerator, particle, "end", element_offset=element_offset, turn_number=turn-1)
         if st == st_success
             if turn_by_turn
-                push!(v, copy(tracked[1]))
+                push!(v, copy(particle))
             end
         else
-            append!(v, [Pos(NaN, tpsa=tpsa) for i in 1:1:(nr_turns-turn+1)])
-            break
+            lostturn = turn
+            if turn_by_turn
+                append!(v, [copy(particle) for i in 1:1:(nr_turns-turn+1)])
+            else
+                v = particle
+            end
+            return v, st, lostplane, lostturn, lostelement
         end
-        tracked = tracked[1]
     end
-    if !turn_by_turn && st == st_success
-        v = [copy(tracked)]
-        lostplane = no_plane
+    if !turn_by_turn
+        v = particle
     end
-    return v, st, lostplane
+    return v, st, lostplane, lostturn, lostelement
 end
 
-function _check_if_lost!(element::Element, x::T, y::T, status::Status, lost_plane::Plane, vchamber_state::BoolState) where T
-
+function _check_if_lost!(element::Element, x::T, y::T, vchamber_state::BoolState) where T
+    status::Status = st_success
+    lost_plane::Plane = no_plane
     if !isfinite(x)
         lost_plane = plane_x
         status = st_particle_lost
@@ -190,11 +200,14 @@ function _check_if_lost!(element::Element, x::T, y::T, status::Status, lost_plan
     end
 
     if (status != st_particle_lost) && (vchamber_state == on)
-        _aux_check_if_lost!(element, x, y, status, lost_plane)
+        status, lost_plane = _aux_check_if_lost!(element, x, y)
     end
+    return status, lost_plane
 end
 
-function _aux_check_if_lost!(element::Element, x::T, y::T, status::Status, lost_plane::Plane) where T
+function _aux_check_if_lost!(element::Element, x::T, y::T) where T
+    status::Status = st_success
+    lost_plane::Plane = no_plane
     if element.vchamber == vchamber_rectangle
         if x <= element.hmin || x >= element.hmax
             lost_plane = plane_x
@@ -213,6 +226,9 @@ function _aux_check_if_lost!(element::Element, x::T, y::T, status::Status, lost_
         ly::Float64 = (element.vmax - element.vmin) / 2
         xc::Float64 = (element.hmax + element.hmin) / 2
         yc::Float64 = (element.vmax + element.vmin) / 2
+        if lx == 0.0 || ly == 0.0
+            println("largura = 0!!!")
+        end
         xn::Float64 = abs((x - xc) / lx)
         yn::Float64 = abs((y - yc) / ly)
         amplitude::Float64 = 0.0
@@ -233,4 +249,5 @@ function _aux_check_if_lost!(element::Element, x::T, y::T, status::Status, lost_
             lost_plane = no_plane
         end
     end
+    return status, lost_plane
 end

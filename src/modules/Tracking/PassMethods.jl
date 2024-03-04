@@ -9,18 +9,27 @@ using ..Elements: Element
 using ..PosModule: Pos
 using ..Constants: reduced_planck_constant, electron_charge, electron_mass, light_speed
 
-const DRIFT1::Float64  =  0.6756035959798286638e00
-const DRIFT2::Float64  = -0.1756035959798286639e00
-const KICK1::Float64   =  0.1351207191959657328e01
-const KICK2::Float64   = -0.1702414383919314656e01
+function pow3(x::T) where T
+    return (x*x)*x
+end
 
-const TWOPI::Float64 = 6.28318530717959   # 2*pi 
-const CGAMMA::Float64 = 8.846056192e-05   # cgamma, [m]/[GeV^3] Ref[1] (4.1)
-const M0C2::Float64 = 5.10999060e5        # Electron rest mass [eV]
-const LAMBDABAR::Float64 = 3.86159323e-13 # Compton wavelength/2pi [m]
-const CER::Float64 = 2.81794092e-15       # Classical electron radius [m]
-const CU::Float64 = 1.323094366892892     # 55/(24*sqrt(3)) factor
-const CQEXT::Float64 = sqrt(CU * CER * reduced_planck_constant * electron_charge * light_speed) * electron_charge * electron_charge / ((electron_mass*light_speed*light_speed)^3) #  for quant. diff. kick
+function pow2(x::T) where T
+    return (x*x)
+end
+
+const DRIFT1 ::Float64  = +0.6756035959798286638e00
+const DRIFT2 ::Float64  = -0.1756035959798286639e00
+const KICK1  ::Float64  = +0.1351207191959657328e01
+const KICK2  ::Float64  = -0.1702414383919314656e01
+
+# ATCOMPATIBLE
+const TWOPI     ::Float64 = 6.28318530717959e0 # # not ATCOMPATIBLE :::: 2e0*pi
+const CGAMMA    ::Float64 = 8.846056192e-05   # cgamma, [m]/[GeV^3] Ref[1] (4.1)
+const M0C2      ::Float64 = 5.10999060e5        # Electron rest mass [eV]
+const LAMBDABAR ::Float64 = 3.86159323e-13 # Compton wavelength/2pi [m]
+const CER       ::Float64 = 2.81794092e-15       # Classical electron radius [m]
+const CU        ::Float64 = 1.323094366892892e0     # 55/(24*sqrt(3)) factor
+const CQEXT     ::Float64 = sqrt(CU * CER * reduced_planck_constant * electron_charge * light_speed) * electron_charge * electron_charge / pow3(electron_mass*light_speed*light_speed) #  for quant. diff. kick
 
 function _drift(pos::Pos{T}, length::Float64) where T
     pnorm::T = 1 / (1 + pos.de)
@@ -52,7 +61,7 @@ function _b2_perp(bx::T, by::T, px::T, py::T, curv::S=1.0) where {T,S}
     v_norm2_inv::T = curv2 + (px*px) + (py*py)
     b2p::T = (by*by) + (bx*bx)
     b2p *= curv2
-    b2p += ((bx * py) - (by * px))^2 # with tpsa, i didnt checked the speed: pow(x, 2) or x*x
+    b2p += pow2((bx * py) - (by * px)) # with tpsa, i didnt checked the speed: pow(x, 2) or x*x
     b2p /= v_norm2_inv
     return b2p
 end
@@ -65,18 +74,18 @@ function _strthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
     real_sum, imag_sum = _calcpolykick(pos, polynom_a, polynom_b)
 
     if rad_const != 0.0
-        pnorm::T = 1 / (1 + pos.de)
+        pnorm::T = 1.0 / (1.0 + pos.de)
         px::T = pos.px * pnorm
         py::T = pos.py * pnorm
         b2p::T = 0.0
         b2p = _b2_perp(imag_sum, real_sum, px, py)
-        delta_factor::T  = (1 + pos.de) * (1 + pos.de)
-        dl_ds::T  = 1.0 + ((px*px + py*py) / 2)
+        delta_factor::T  = pow2(1.0 + pos.de)
+        dl_ds::T  = 1.0 + ((px*px + py*py) / 2.0)
         pos.de -= rad_const * delta_factor * b2p * dl_ds * length
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::T = delta_factor * qexcit_const * sqrt(sqrt(b2p*b2p*b2p) * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(sqrt(pow3(b2p)) * dl_ds)
             pos.de += d * randn()
         end
 
@@ -98,19 +107,19 @@ function _bndthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
     de::T = pos.de
 
     if rad_const != 0.0
-        pnorm::T = 1 / (1 + pos.de)
+        pnorm::T = 1.0 / (1.0 + pos.de)
         px::T = pos.px * pnorm
         py::T = pos.py * pnorm
         curv::T = 1.0 + (irho * pos.rx)
         b2p::T = 0.0
         b2p = _b2_perp(imag_sum, real_sum+irho, px, py, curv)
-        delta_factor::T = (1 + pos.de) * (1 + pos.de)
-        dl_ds::T = curv + ((px*px + py*py) / 2)
+        delta_factor::T = pow2(1.0 + pos.de)
+        dl_ds::T = curv + ((px*px + py*py) / 2.0)
         pos.de -= rad_const * delta_factor * b2p * dl_ds * length
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::T = delta_factor * qexcit_const * sqrt(sqrt(b2p*b2b*b2p) * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(sqrt(pow3(b2p)) * dl_ds)
             pos.de += d * randn()
         end
 
@@ -132,7 +141,7 @@ function _edge_fringe(pos::Pos{T}, inv_rho::Float64, edge_angle::Float64,
 
     fx::T = inv_rho * tan(edge_angle) / (1.0 + de)
 
-    psi_bar::T = edge_angle - inv_rho * gap * fint * (1 + sin(edge_angle)^2) / cos(edge_angle) / (1.0 + de)
+    psi_bar::T = edge_angle - inv_rho * gap * fint * (1.0 + pow2(sin(edge_angle))) / cos(edge_angle) / (1.0 + de)
     
     fy::T = inv_rho * tan(psi_bar) / (1.0 + de)
     
@@ -164,11 +173,11 @@ function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     qexcit_const::Float64 = 0.0
 
     if accelerator.radiation_state == on
-        rad_const = CGAMMA * (accelerator.energy/1e9)^3 / TWOPI
+        rad_const = CGAMMA * pow3(accelerator.energy/1.0e9) / TWOPI
     end
 
     if accelerator.radiation_state == full
-        qexcit_const = CQEXT * accelerator.energy^2 * sqrt(accelerator.energy * sl)
+        qexcit_const = CQEXT * pow2(accelerator.energy) * sqrt(accelerator.energy * sl)
     end
 
     for i in 1:steps
@@ -202,7 +211,7 @@ function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     qexcit_const::Float64 = 0.0
 
     if accelerator.radiation_state == on
-        rad_const = CGAMMA * (accelerator.energy / 1e9)^3 / (TWOPI)
+        rad_const = CGAMMA * pow3(accelerator.energy / 1e9) / TWOPI
     end
 
     if accelerator.radiation_state == full
@@ -237,14 +246,14 @@ function pm_corrector_pass!(pos::Pos{T}, elem::Element) where T
     xkick::Float64 = elem.hkick
     ykick::Float64 = elem.vkick
 
-    if elem.length == 0
+    if elem.length == 0.0
         pos.px += hkick
         pos.py += vkick
     else
         px::T = pos.px
         py::T = pos.py
         de::T = pos.de
-        pnorm::T = 1 / (1 + de)
+        pnorm::T = 1.0 / (1.0 + de)
         norml::T = elem.length * pnorm
         pos.dl += norml * pnorm * 0.5 * (xkick * xkick/3.0 + ykick * ykick/3.0 + px*px + py*py + px * xkick + py * ykick)
         pos.rx += norml * (px + 0.5 * xkick)
@@ -266,19 +275,22 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
     frf::Float64 = elem.frequency
     harmonic_number::Int = accelerator.harmonic_number
     velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
-    #velocity::Float64 = light_speed / 1e8
+    # velocity::Float64 = light_speed / 1e8
     L0::Float64 = accelerator.length
     factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
+    # if factor != 0.0
+    #     println("factor = $factor")
+    # end
 
-    if elem.length == 0
-        pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
+    if elem.length == 0.0
+        pos.de += -nv * sin((TWOPI * frf /1e8* ((pos.dl/velocity/1e8) - (factor*turn_number))) * 1e8 - philag)
     
     else
         px::T = pos.px
         py::T = pos.py
 
         # Drift half length
-        pnorm::T = 1 / (1 + pos.de)
+        pnorm::T = 1.0 / (1.0 + pos.de)
         norml::T = (0.5 * elem.length) * pnorm
         pos.rx += norml * px
         pos.ry += norml * py
