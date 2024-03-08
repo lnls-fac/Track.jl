@@ -320,7 +320,7 @@ end
 
 function mysin(x::T) where T
     if isa(x, Number)
-        return sinpi(x/pi)
+        return @ccall "/opt/mamba_files/mamba/envs/sirius/x86_64-conda-linux-gnu/sysroot/usr/lib64/libm.so".sin(x::Cdouble)::Float64
     else
         return sin(x)
     end
