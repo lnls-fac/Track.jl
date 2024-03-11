@@ -2,7 +2,7 @@ using ..MatrixModule: find_matrix66
 using ..Orbit: find_orbit6
 using ..AcceleratorModule: Accelerator
 
-export calc_twiss
+export calc_twiss, Twiss
 
 struct Twiss 
     betax

@@ -61,8 +61,12 @@ function line_pass(
         error("invalid indices: outside of lattice bounds. The valid indices should stay between 1 and $leng")
     end
     tpsa=false
+    bfloat=false
     if isa(particle.rx, Tpsa)
         tpsa = true
+    end
+    if isa(particle.rx, BigFloat)
+        bfloat = true
     end
     status::Status = st_success
     lostplane::Plane = no_plane
@@ -90,7 +94,7 @@ function line_pass(
         status, lostplane = _check_if_lost!(element, particle.rx, particle.ry, accelerator.vchamber_state)
 
         if status != st_success
-            nan_particle::Pos{T} = Pos(NaN,tpsa=tpsa)
+            nan_particle::Pos{T} = Pos(NaN,tpsa=tpsa, bigfloat=bfloat)
             lostelement = i
             # Fill the rest of vector with NaNs
             for j in i+1:length(indcs)
@@ -150,11 +154,7 @@ function ring_pass(accelerator::Accelerator,
         error("invalid nr_turns: should be >= 1")
     end
     if turn_by_turn
-        v = Pos{T}[]
-    end
-    tpsa=false
-    if isa(particle.rx, Tpsa)
-        tpsa = true
+        v = Pos{T}[copy(particle)]
     end
     lostplane = no_plane
     st = st_success

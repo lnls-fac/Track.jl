@@ -10,11 +10,20 @@ using ..PosModule: Pos
 using ..Constants: reduced_planck_constant, electron_charge, electron_mass, light_speed
 
 function pow3(x::T) where T
-    return (x*x)*x
+    return (x*x*x)
 end
 
 function pow2(x::T) where T
     return (x*x)
+end
+
+function lmsin(x::T) where T
+    if isa(x, Number)
+        #return @ccall "/opt/mamba_files/mamba/envs/sirius/x86_64-conda-linux-gnu/sysroot/usr/lib64/libm.so".sin(x::Cdouble)::Float64
+        return @ccall "/lib/x86_64-linux-gnu/libm.so.6".sin(x::Cdouble)::Float64
+    else
+        return sin(x)
+    end
 end
 
 const DRIFT1 ::Float64  = +0.6756035959798286638e00
@@ -23,7 +32,9 @@ const KICK1  ::Float64  = +0.1351207191959657328e01
 const KICK2  ::Float64  = -0.1702414383919314656e01
 
 # ATCOMPATIBLE
-const TWOPI     ::Float64 = 6.28318530717959e0 # # not ATCOMPATIBLE :::: 2e0*pi
+const TWOPI     ::Float64 = 6.28318530717959 
+# not ATCOMPATIBLE 
+# const TWOPI     ::Float64 = 2e0 * pi
 const CGAMMA    ::Float64 = 8.846056192e-05   # cgamma, [m]/[GeV^3] Ref[1] (4.1)
 const M0C2      ::Float64 = 5.10999060e5        # Electron rest mass [eV]
 const LAMBDABAR ::Float64 = 3.86159323e-13 # Compton wavelength/2pi [m]
@@ -32,7 +43,7 @@ const CU        ::Float64 = 1.323094366892892e0     # 55/(24*sqrt(3)) factor
 const CQEXT     ::Float64 = sqrt(CU * CER * reduced_planck_constant * electron_charge * light_speed) * electron_charge * electron_charge / pow3(electron_mass*light_speed*light_speed) #  for quant. diff. kick
 
 function _drift(pos::Pos{T}, length::Float64) where T
-    pnorm::T = 1 / (1 + pos.de)
+    pnorm::T = 1.0 / (1.0 + pos.de)
     norml::T = length * pnorm
     pos.rx += norml * pos.px
     pos.ry += norml * pos.py
@@ -85,7 +96,7 @@ function _strthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::T = delta_factor * qexcit_const * sqrt(sqrt(pow3(b2p)) * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(pow3(sqrt(b2p)) * dl_ds)
             pos.de += d * randn()
         end
 
@@ -119,7 +130,7 @@ function _bndthinkick(pos::Pos{T}, length::Float64, polynom_a::Vector{Float64},
 
         if qexcit_const != 0.0
             # quantum excitation kick
-            d::T = delta_factor * qexcit_const * sqrt(sqrt(pow3(b2p)) * dl_ds)
+            d::T = delta_factor * qexcit_const * sqrt(pow3(sqrt(b2p)) * dl_ds)
             pos.de += d * randn()
         end
 
@@ -278,20 +289,16 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
     # not ATCOMPATIBLE
     #velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
     # ATCOMPATIBLE
-    velocity::Float64 = light_speed #/ 1e8
+    velocity::Float64 = light_speed
 
     # L0::Float64 = accelerator.length
     # factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
 
+
     if elem.length == 0.0
-        #pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
-        fd::Float64 = TWOPI * frf * pos.dl / velocity  - philag
-        # @printf("fd = %+.100e\n", fd)
-        # @printf("sin(fd) = %+.100e\n", sin(fd))
-        # @printf("-nv * sin(fd) = %+.100e\n", -nv*sin(fd))
-        # @printf("antes  -- de = %+.100e\n", pos.de)
-        pos.de += -nv * mysin(TWOPI * frf * pos.dl / velocity  - philag)
-        # @printf("depois -- de = %+.100e\n", pos.de)
+        # pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
+        pos.de += -nv * lmsin(TWOPI * frf * pos.dl / velocity  - philag)
+        # pos.de += -nv * sinpi(2.0 * frf * (pos.dl / velocity / 1e8)  - philag/pi)
     else
         px::T = pos.px
         py::T = pos.py
@@ -305,7 +312,8 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
 
         # Longitudinal momentum kick
         # pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
-        pos.de += -nv * mysin(TWOPI * frf * pos.dl / velocity  - philag)
+        pos.de += -nv * lmsin(TWOPI * frf * pos.dl / velocity  - philag)
+        # pos.de += -nv * sinpi(2.0 * frf * (pos.dl / velocity / 1e8)  - philag/pi)
 
         # Drift half length
         pnorm = 1.0 / (1.0 + pos.de)
@@ -316,12 +324,4 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
     end
 
     return st_success
-end
-
-function mysin(x::T) where T
-    if isa(x, Number)
-        return @ccall "/opt/mamba_files/mamba/envs/sirius/x86_64-conda-linux-gnu/sysroot/usr/lib64/libm.so".sin(x::Cdouble)::Float64
-    else
-        return sin(x)
-    end
 end

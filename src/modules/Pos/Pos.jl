@@ -6,56 +6,101 @@ using ..TPSA: Tpsa
 
 export Pos
 
-mutable struct Pos{T<:Union{Float64, Tpsa{6, 1, Float64}}}
+mutable struct Pos{T<:Union{BigFloat, Float64, Tpsa{6, 1, Float64}}}
     rx::T
     px::T
     ry::T
     py::T
     de::T
     dl::T
-    function Pos(rx::T, px::T, ry::T, py::T, de::T, dl::T; tpsa::Bool=false) where T#<: Number
+    function Pos(rx::T, px::T, ry::T, py::T, de::T, dl::T; tpsa::Bool=false, bigfloat::Bool=false) where T#<: Number
         if !tpsa
-            new{Float64}(Float64(rx), Float64(px), Float64(ry), Float64(py), Float64(de), Float64(dl))
+            if !bigfloat
+                new{Float64}(Float64(rx), Float64(px), Float64(ry), Float64(py), Float64(de), Float64(dl))
+            else
+                new{BigFloat}(BigFloat(rx), BigFloat(px), BigFloat(ry), BigFloat(py), BigFloat(de), BigFloat(dl))
+            end
         else
-            new{Tpsa{6, 1, Float64}}(
-                Tpsa{6, 1, Float64}(rx, 1),
-                Tpsa{6, 1, Float64}(px, 2),
-                Tpsa{6, 1, Float64}(ry, 3),
-                Tpsa{6, 1, Float64}(py, 4),
-                Tpsa{6, 1, Float64}(de, 5),
-                Tpsa{6, 1, Float64}(dl, 6),
-            )
+            if !bigfloat
+                new{Tpsa{6, 1, Float64}}(
+                    Tpsa{6, 1, Float64}(rx, 1),
+                    Tpsa{6, 1, Float64}(px, 2),
+                    Tpsa{6, 1, Float64}(ry, 3),
+                    Tpsa{6, 1, Float64}(py, 4),
+                    Tpsa{6, 1, Float64}(de, 5),
+                    Tpsa{6, 1, Float64}(dl, 6),
+                )
+            else
+                new{Tpsa{6, 1, BigFloat}}(
+                    Tpsa{6, 1, BigFloat}(rx, 1),
+                    Tpsa{6, 1, BigFloat}(px, 2),
+                    Tpsa{6, 1, BigFloat}(ry, 3),
+                    Tpsa{6, 1, BigFloat}(py, 4),
+                    Tpsa{6, 1, BigFloat}(de, 5),
+                    Tpsa{6, 1, BigFloat}(dl, 6),
+                )
+            end
         end
     end
-    function Pos(v::Vector{T}; tpsa::Bool=false) where T#<:Number
+    function Pos(v::Vector{T}; tpsa::Bool=false, bigfloat::Bool=false) where T#<:Number
         if !(0<length(v)<=6)
             error("Vector agr must be 6-element")
         end
         if !tpsa
-            new{Float64}(Float64(v[1]), Float64(v[2]), Float64(v[3]), Float64(v[4]), Float64(v[5]), Float64(v[6]))
+            if !bigfloat
+                new{Float64}(Float64(v[1]), Float64(v[2]), Float64(v[3]), Float64(v[4]), Float64(v[5]), Float64(v[6]))
+            else
+                new{BigFloat}(BigFloat(v[1]), BigFloat(v[2]), BigFloat(v[3]), BigFloat(v[4]), BigFloat(v[5]), BigFloat(v[6]))
+            end
         else
-            new{Tpsa{6, 1, Float64}}(
-                Tpsa{6, 1, Float64}(v[1], 1),
-                Tpsa{6, 1, Float64}(v[2], 2),
-                Tpsa{6, 1, Float64}(v[3], 3),
-                Tpsa{6, 1, Float64}(v[4], 4),
-                Tpsa{6, 1, Float64}(v[5], 5),
-                Tpsa{6, 1, Float64}(v[6], 6),
-            )
+            if !bigfloat
+                new{Tpsa{6, 1, Float64}}(
+                    Tpsa{6, 1, Float64}(v[1], 1),
+                    Tpsa{6, 1, Float64}(v[2], 2),
+                    Tpsa{6, 1, Float64}(v[3], 3),
+                    Tpsa{6, 1, Float64}(v[4], 4),
+                    Tpsa{6, 1, Float64}(v[5], 5),
+                    Tpsa{6, 1, Float64}(v[6], 6),
+                )
+            else
+                new{Tpsa{6, 1, BigFloat}}(
+                    Tpsa{6, 1, BigFloat}(v[1], 1),
+                    Tpsa{6, 1, BigFloat}(v[2], 2),
+                    Tpsa{6, 1, BigFloat}(v[3], 3),
+                    Tpsa{6, 1, BigFloat}(v[4], 4),
+                    Tpsa{6, 1, BigFloat}(v[5], 5),
+                    Tpsa{6, 1, BigFloat}(v[6], 6),
+                )
+            end
         end
     end
-    function Pos(f::T; tpsa::Bool=false) where T#<:Number
+    function Pos(f::T; tpsa::Bool=false, bigfloat::Bool=false) where T#<:Number
         if !tpsa
-            new{Float64}(Float64(f), Float64(f), Float64(f), Float64(f), Float64(f), Float64(f))
+            if !bigfloat
+                new{Float64}(Float64(f), Float64(f), Float64(f), Float64(f), Float64(f), Float64(f))
+            else
+                new{BigFloat}(BigFloat(f), BigFloat(f), BigFloat(f), BigFloat(f), BigFloat(f), BigFloat(f))
+            end
         else
-            new{Tpsa{6, 1, Float64}}(
-                Tpsa{6, 1, Float64}(f, 1),
-                Tpsa{6, 1, Float64}(f, 2),
-                Tpsa{6, 1, Float64}(f, 3),
-                Tpsa{6, 1, Float64}(f, 4),
-                Tpsa{6, 1, Float64}(f, 5),
-                Tpsa{6, 1, Float64}(f, 6),
-            )
+            if !bigfloat
+                new{Tpsa{6, 1, Float64}}(
+                    Tpsa{6, 1, Float64}(f, 1),
+                    Tpsa{6, 1, Float64}(f, 2),
+                    Tpsa{6, 1, Float64}(f, 3),
+                    Tpsa{6, 1, Float64}(f, 4),
+                    Tpsa{6, 1, Float64}(f, 5),
+                    Tpsa{6, 1, Float64}(f, 6),
+                )
+            else
+                new{Tpsa{6, 1, BigFloat}}(
+                    Tpsa{6, 1, BigFloat}(f, 1),
+                    Tpsa{6, 1, BigFloat}(f, 2),
+                    Tpsa{6, 1, BigFloat}(f, 3),
+                    Tpsa{6, 1, BigFloat}(f, 4),
+                    Tpsa{6, 1, BigFloat}(f, 5),
+                    Tpsa{6, 1, BigFloat}(f, 6),
+                )
+            end
         end
     end
 end
@@ -109,10 +154,14 @@ end
 
 function Base.copy(p::Pos{T}) where T
     tpsa=false
+    bfloat=false
     if isa(p.rx, Tpsa)
         tpsa=true
     end
-    p_new = Pos(0.0, tpsa=tpsa)
+    if isa(p.rx, BigFloat)
+        bfloat=true
+    end
+    p_new = Pos(0.0, tpsa=tpsa, bigfloat=bfloat)
     p_new.rx = p.rx
     p_new.px = p.px
     p_new.ry = p.ry
