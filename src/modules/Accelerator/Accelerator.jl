@@ -158,7 +158,7 @@ end
 function find_indices(accelerator::Accelerator, property::String, value::Union{Real, String, Auxiliary.PassMethod})
     indices::Vector{Int} = Int[]
     for (idx, element) in enumerate(accelerator.lattice)
-        if getfield(element, Symbol(property)) == value
+        if getproperty(element, Symbol(property)) == value
             push!(indices, idx)
         end
     end
