@@ -1,6 +1,6 @@
 # Accelerator.jl
 
-import Base: !=, setproperty!, setfield!, getproperty, show
+import Base: !=, setproperty!, setfield!, getproperty, show, getindex
 using Printf
 using ..Auxiliary
 using ..Constants: electron_rest_energy_eV, light_speed
@@ -270,3 +270,21 @@ function adjust_beam_parameters(accelerator::Accelerator, property::Symbol, valu
     setfield!(accelerator, :velocity, velocity)
     setfield!(accelerator, :brho, brho)
 end
+
+function Base.getindex(accelerator::Accelerator, index::Int)
+    return accelerator.lattice[index]
+end
+
+function Base.getindex(accelerator::Accelerator, ::Colon)
+    return accelerator.lattice
+end
+
+function Base.length(accelerator::Accelerator)
+    return length(accelerator.lattice)
+end
+
+function Base.size(accelerator::Accelerator)
+    return length(accelerator.lattice)
+end
+
+Base.iterate(a::Accelerator, state=1) = state > length(a.lattice) ? nothing : (a.lattice[state], state + 1)
