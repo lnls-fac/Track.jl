@@ -88,7 +88,7 @@ function line_pass(
 
         status = element_pass(element, particle, accelerator, turn_number=turn_number)
 
-        status, lostplane = _check_if_lost!(element, particle.rx, particle.ry, accelerator.vchamber_state)
+        status, lostplane = _check_if_lost!(element, particle.rx, particle.ry, accelerator.vchamber_on)
 
         if status != st_success
             nan_particle::Pos{T} = Pos(NaN,tpsa=tpsa)
@@ -179,7 +179,7 @@ function ring_pass(accelerator::Accelerator,
     return v, st, lostplane, lostturn, lostelement
 end
 
-function _check_if_lost!(element::Element, x::T, y::T, vchamber_state::BoolState) where T
+function _check_if_lost!(element::Element, x::T, y::T, vchamber_on::BoolState) where T
     status::Status = st_success
     lost_plane::Plane = no_plane
     if !isfinite(x)
@@ -196,7 +196,7 @@ function _check_if_lost!(element::Element, x::T, y::T, vchamber_state::BoolState
         end
     end
 
-    if (status != st_particle_lost) && (vchamber_state == on)
+    if (status != st_particle_lost) && (vchamber_on == on)
         status, lost_plane = _aux_check_if_lost!(element, x, y)
     end
     return status, lost_plane

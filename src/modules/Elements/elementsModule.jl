@@ -147,7 +147,12 @@ end
 function Base.copy(e::Element)
     e_out = Element("")
     for prop in fieldnames(Element)
-        setfield!(e_out, prop, getfield(e, prop))
+        value = getfield(e, prop)
+        if isa(value, Vector)
+            setfield!(e_out, prop, copy(value))
+        else
+            setfield!(e_out, prop, value)
+        end
     end
     return e_out
 end

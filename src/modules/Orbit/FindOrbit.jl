@@ -19,9 +19,9 @@ function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, eleme
         error("element_offset should be >= 1 and <= $leng")
     end
 
-    radsts::BoolState = accelerator.radiation_state
+    radsts::BoolState = accelerator.radiation_on
     if radsts == full
-        accelerator.radiation_state = on
+        accelerator.radiation_on = on
     end
     
     tpsa=false
@@ -74,7 +74,7 @@ function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, eleme
     end
     
     closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
-    accelerator.radiation_state = radsts
+    accelerator.radiation_on = radsts
     return closed_orbit[1], st_success
 end
 
@@ -91,9 +91,9 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
         error("element_offset should be >= 1 and <= $leng")
     end
 
-    radsts::BoolState = accelerator.radiation_state
+    radsts::BoolState = accelerator.radiation_on
     if radsts == full
-        accelerator.radiation_state = on
+        accelerator.radiation_on = on
     end
 
     cav_indices::Vector{Int} = find_cav_indices(accelerator)
@@ -180,7 +180,7 @@ function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_poin
     end
     
     closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
-    accelerator.radiation_state = radsts
+    accelerator.radiation_on = radsts
     return closed_orbit[1], st_success
 end
 

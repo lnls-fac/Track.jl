@@ -172,7 +172,7 @@ function translate_pos(pos::Pos{T}, t::Vector{Float64}) where T
 end
 
 function rotate_pos(pos::Pos{T}, R::Vector{Float64}) where T
-    if !isempty(r)
+    if !isempty(R)
         rx0::T = pos.rx
         px0::T = pos.px
         ry0::T = pos.ry
@@ -226,15 +226,15 @@ function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     rad_const::Float64 = 0.0
     qexcit_const::Float64 = 0.0
 
-    if accelerator.radiation_state == on
+    if accelerator.radiation_on == on
         rad_const = CGAMMA * pow3(accelerator.energy/1.0e9) / TWOPI
     end
 
-    if accelerator.radiation_state == full
+    if accelerator.radiation_on == full
         qexcit_const = CQEXT * pow2(accelerator.energy) * sqrt(accelerator.energy * sl)
     end
     
-    global_2_local(pos, element)
+    global_2_local(pos, elem)
     for i in 1:steps
         _drift(pos, l1)
         _strthinkick(pos, k1, polynom_a, polynom_b, rad_const, 0.0)
@@ -244,7 +244,7 @@ function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
         _strthinkick(pos, k1, polynom_a, polynom_b, rad_const, 0.0)
         _drift(pos, l1)
     end
-    local_2_global(pos, element)
+    local_2_global(pos, elem)
     
     return st_success
 end
@@ -263,11 +263,11 @@ function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     rad_const::Float64 = 0.0
     qexcit_const::Float64 = 0.0
 
-    if accelerator.radiation_state == on
+    if accelerator.radiation_on == on
         rad_const = CGAMMA * pow3(accelerator.energy / 1e9) / TWOPI
     end
 
-    if accelerator.radiation_state == full
+    if accelerator.radiation_on == full
         qexcit_const = CQEXT * accelerator.energy^2 * sqrt(accelerator.energy * sl)
     end
 
@@ -277,7 +277,7 @@ function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     fint_out ::Float64 = elem.fint_out
     gap      ::Float64 = elem.gap
 
-    global_2_local(pos, element)
+    global_2_local(pos, elem)
     _edge_fringe(pos, irho, ang_in, fint_in, gap)
     for i in 1:steps
         _drift(pos, l1)
@@ -289,7 +289,7 @@ function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
         _drift(pos, l1)
     end
     _edge_fringe(pos, irho, ang_out, fint_out, gap)
-    local_2_global(pos, element)
+    local_2_global(pos, elem)
 
     return st_success
 end
@@ -299,7 +299,7 @@ function pm_corrector_pass!(pos::Pos{T}, elem::Element) where T
     xkick::Float64 = elem.hkick
     ykick::Float64 = elem.vkick
 
-    global_2_local(pos, element)
+    global_2_local(pos, elem)
     if elem.length == 0.0
         pos.px += hkick
         pos.py += vkick
@@ -319,13 +319,13 @@ function pm_corrector_pass!(pos::Pos{T}, elem::Element) where T
         pos.ry += norml * (py + 0.5 * ykick)
         pos.py += ykick
     end
-    local_2_global(pos, element)
+    local_2_global(por, elem)
 
     return st_success
 end
 
 function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, turn_number::Int) where T
-    if accelerator.cavity_state == off
+    if accelerator.cavity_on == off
         return pm_drift_pass!(pos, elem)
     end
 
@@ -349,11 +349,11 @@ function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, t
         # pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
         pos.de += -nv * lmsin(TWOPI * frf * pos.dl / velocity  - philag)
     else
-        ❤ = elem.length/2.0
-        _drift(pos, ❤)
+        l2 = elem.length/2.0
+        _drift(pos, l2)
         # pos.de += -nv * sin((TWOPI * frf * ((pos.dl/velocity/1e8) - (factor*turn_number))) - philag)
         pos.de += -nv * lmsin(TWOPI * frf * pos.dl / velocity  - philag)
-        _drift(pos, ❤)
+        _drift(pos, l2)
     end
 
     return st_success

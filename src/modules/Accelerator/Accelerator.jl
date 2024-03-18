@@ -10,9 +10,9 @@ export Accelerator, find_spos, find_indices
 
 mutable struct Accelerator
     energy::Float64
-    cavity_state::BoolState
-    radiation_state::BoolState
-    vchamber_state::BoolState
+    cavity_on::BoolState
+    radiation_on::BoolState
+    vchamber_on::BoolState
     harmonic_number::Int
     lattice::Vector{Element}
     lattice_version::String
@@ -37,9 +37,9 @@ end
 
 function isequal(acc1::Accelerator, acc2::Accelerator)
     if (acc1.energy != acc2.energy) return false end
-    if (acc1.cavity_state != acc2.cavity_state) return false end
-    if (acc1.radiation_state != acc2.radiation_state) return false end
-    if (acc1.vchamber_state != acc2.vchamber_state) return false end
+    if (acc1.cavity_on != acc2.cavity_on) return false end
+    if (acc1.radiation_on != acc2.radiation_on) return false end
+    if (acc1.vchamber_on != acc2.vchamber_on) return false end
     if (acc1.harmonic_number != acc2.harmonic_number) return false end
     if (acc1.lattice_version != acc2.lattice_version) return false end
     #if (acc1.lattice != acc2.lattice) return false end revisar comparador de lattices
@@ -54,9 +54,9 @@ function update_cavity(accelerator::Accelerator)
     cavity_indices = find_cav_indices(accelerator)
     for index in cavity_indices
         cav = accelerator.lattice[index]
-        if accelerator.cavity_state == on
+        if accelerator.cavity_on == on
             cav.pass_method = Auxiliary.pm_cavity_pass
-        elseif accelerator.cavity_state == off && cav.length == 0.0
+        elseif accelerator.cavity_on == off && cav.length == 0.0
             cav.pass_method = Auxiliary.pm_identity_pass
         else
             cav.pass_method = Auxiliary.pm_drift_pass
@@ -68,34 +68,34 @@ function setproperty!(accelerator::Accelerator, symbol::Symbol, value)
     if symbol == :energy
         adjust_beam_parameters(accelerator, :energy, value)    
     
-    elseif symbol == :cavity_state
+    elseif symbol == :cavity_on
         if isa(value, BoolState) || isa(value, Int) || isa(value, Bool)
             val = Int(value)
             if 0 <= val <= 1
-                setfield!(accelerator, :cavity_state, BoolState(val))
+                setfield!(accelerator, :cavity_on, BoolState(val))
                 update_cavity(accelerator)
             else
-                error("cavity_state should be 0(cavity off) or 1(cavity on)")
+                error("cavity_on should be 0(cavity off) or 1(cavity on)")
             end
         end
     
-    elseif symbol == :radiation_state
+    elseif symbol == :radiation_on
         if isa(value, BoolState) || isa(value, Int) || isa(value, Bool)
             val = Int(value)
             if 0 <= val <= 2
-                setfield!(accelerator, :radiation_state, BoolState(val))
+                setfield!(accelerator, :radiation_on, BoolState(val))
             else
-                error("radiation_state should be 0(radiation off), 1(radiation dumping) or 2(radiation full)")
+                error("radiation_on should be 0(radiation off), 1(radiation dumping) or 2(radiation full)")
             end
         end
     
-    elseif symbol == :vchamber_state
+    elseif symbol == :vchamber_on
         if isa(value, BoolState) || isa(value, Int) || isa(value, Bool)
             val = Int(value)
             if 0 <= val <= 2
-                setfield!(accelerator, :vchamber_state, BoolState(val))
+                setfield!(accelerator, :vchamber_on, BoolState(val))
             else
-                error("vchamber_state should be: (0, off, false) or (1, on, true)")
+                error("vchamber_on should be: (0, off, false) or (1, on, true)")
             end
         end
     elseif symbol == :harmonic_number
@@ -192,9 +192,9 @@ end
 function Base.show(io::IO, ::MIME"text/plain", accelerator::Accelerator)
     println(io, "------------------ Accelerator -----------------")
     @printf(io, "\tEnergy:            %1.3e  [GeV] \n", (accelerator.energy/1e9))
-    println(io, "\tCavity State:      ", accelerator.cavity_state)
-    println(io, "\tRadiation State:   ", accelerator.radiation_state)
-    println(io, "\tVchamber State:    ", accelerator.vchamber_state)
+    println(io, "\tCavity State:      ", accelerator.cavity_on)
+    println(io, "\tRadiation State:   ", accelerator.radiation_on)
+    println(io, "\tVchamber State:    ", accelerator.vchamber_on)
     println(io, "\tHarmonic Number:   ", accelerator.harmonic_number)
     @printf(io, "\tLength:            %f  [m]\n", (accelerator.length))
     @printf(io, "\tVelocity:          %.8f  [m/s]\n", accelerator.velocity)
@@ -212,9 +212,9 @@ end
 function Base.show(io::IO, accelerator::Accelerator)
     println(io, "------------------ Accelerator -----------------")
     @printf(io, "\tEnergy:            %1.3e  [GeV] \n", (accelerator.energy/1e9))
-    println(io, "\tCavity State:      ", accelerator.cavity_state)
-    println(io, "\tRadiation State:   ", accelerator.radiation_state)
-    println(io, "\tVchamber State:    ", accelerator.vchamber_state)
+    println(io, "\tCavity State:      ", accelerator.cavity_on)
+    println(io, "\tRadiation State:   ", accelerator.radiation_on)
+    println(io, "\tVchamber State:    ", accelerator.vchamber_on)
     println(io, "\tHarmonic Number:   ", accelerator.harmonic_number)
     @printf(io, "\tLength:            %f  [m]\n", (accelerator.length))
     @printf(io, "\tVelocity:          %.8f  [m/s]\n", accelerator.velocity)
@@ -284,7 +284,9 @@ function Base.length(accelerator::Accelerator)
 end
 
 function Base.size(accelerator::Accelerator)
-    return length(accelerator.lattice)
+    return size(accelerator.lattice)
 end
 
-Base.iterate(a::Accelerator, state=1) = state > length(a.lattice) ? nothing : (a.lattice[state], state + 1)
+# Base.iterate(a::Accelerator, state=1) = state > length(a.lattice) ? nothing : (a.lattice[state], state + 1)
+
+Base.eachindex(accelerator::Accelerator) = Base.OneTo(length(accelerator.lattice))

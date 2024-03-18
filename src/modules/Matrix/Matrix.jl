@@ -31,9 +31,9 @@ function _tracking_find_matrix66(accelerator::Accelerator, fixed_point::Union{Po
         error("invalid indices {String}: should be: \"m66\", \"open\" or \"closed\".")
     end
 
-    radsts::BoolState = accelerator.radiation_state
+    radsts::BoolState = accelerator.radiation_on
     if radsts == full
-        accelerator.radiation_state = on
+        accelerator.radiation_on = on
     end
 
     if fixed_point === nothing
@@ -91,9 +91,9 @@ function _tpsa_find_matrix66(accelerator::Accelerator, fixed_point::Union{Pos{T}
         error("invalid indices {String}: should be: \"m66\", \"open\" or \"closed\".")
     end
 
-    radsts::BoolState = accelerator.radiation_state
+    radsts::BoolState = accelerator.radiation_on
     if radsts == full
-        accelerator.radiation_state = on
+        accelerator.radiation_on = on
     end
 
     if fixed_point === nothing
@@ -119,7 +119,7 @@ function _tpsa_find_matrix66(accelerator::Accelerator, fixed_point::Union{Pos{T}
         push!(tm, m66)
     end
 
-    accelerator.radiation_state = radsts
+    accelerator.radiation_on = radsts
 
     if return_tm_flag
         return m66, tm
