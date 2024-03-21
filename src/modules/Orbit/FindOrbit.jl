@@ -4,87 +4,109 @@ using ..PosModule: Pos, Pos_get_max
 using ..AcceleratorModule: Accelerator, find_cav_indices
 using ..Elements: Element
 using ..Constants: light_speed
+using ..TPSA: Tpsa
 using LinearAlgebra
 
 export find_orbit4, find_orbit6
 
-function find_orbit4(accelerator::Accelerator; fixed_point_guess::Pos{Float64} = Pos(0.0))
-    delta = 1e-9              # [m],[rad],[dE/E]
+function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
+    delta = 1e-9
     tolerance = 2.22044604925e-14
     max_nr_iters = 50
     leng = length(accelerator.lattice)
     
-    radsts::BoolState = accelerator.radiation_state
+    if !(1 <= element_offset <= leng)
+        error("element_offset should be >= 1 and <= $leng")
+    end
+
+    radsts::BoolState = accelerator.radiation_on
     if radsts == full
-        accelerator.radiation_state = on
+        accelerator.radiation_on = on
     end
     
-    co::Vector{Pos{Float64}} = fill(fixed_point_guess, 7)
-    D::Vector{Pos{Float64}} = fill(Pos(0.0), 7)
-    M::Vector{Pos{Float64}} = fill(Pos(0.0), 6)
-    dco::Pos{Float64} = Pos(1.0, 1.0, 1.0, 1.0, 0.0, 0.0)
-    theta::Pos{Float64} = Pos(0.0)
+    tpsa=false
+    if isa(fixed_point_guess.rx, Tpsa)
+        tpsa = true
+    end
+    
+    fixed_point_guess.de += energy_offset
+
+    co::Vector{Pos{T}} = fill(fixed_point_guess, 7)
+    D::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 7)
+    M::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 6)
+    dco::Pos{T} = Pos(1.0, 1.0, 1.0, 1.0, 0.0, 0.0, tpsa=tpsa)
     
     D = matrix6_set_identity_posvec(D, delta=delta)
 
     nr_iter = 0
     while (Pos_get_max(dco) > tolerance) && (nr_iter <= max_nr_iters)
         co = co + D
-        Ri = co[7]
+        Ri = copy(co[7])
         status = st_success
-        co2::Vector{Pos{Float64}} = fill(Pos(0.0), 7)
+        co2::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 7)
         for i in [1, 2, 3, 4, 7]
             pf, status, _ = line_pass(accelerator, co[i], [leng+1])
             co2[i] = copy(pf[1])
         end
         if status != st_success
-            return Pos{Float64}[], st_findorbit_one_turn_matrix_problem
+            return Pos(0), st_findorbit_one_turn_matrix_problem
         end
 
-        Rf = co2[5]
+        Rf = copy(co2[5])
         M[1] = (co2[1] - Rf) / delta
         M[2] = (co2[2] - Rf) / delta
         M[3] = (co2[3] - Rf) / delta
         M[4] = (co2[4] - Rf) / delta
         b = Rf - Ri
-        M_1 = fill(Pos(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 6)
-        matrix6_set_identity_posvec(M_1)
+        M_1 = fill(Pos(0.0, tpsa=tpsa), 6)
+        M_1 = matrix6_set_identity_posvec(M_1)
         M_1 = M_1 - M
         dco = linalg_solve4_posvec(M_1, b)
         co[7] = dco + Ri
-        co[1] = co[7]; co[2] = co[7]
-        co[3] = co[7]; co[4] = co[7]
-        co[5] = co[7]; co[6] = co[7]
+        co[1] = copy(co[7]); co[2] = copy(co[7])
+        co[3] = copy(co[7]); co[4] = copy(co[7])
+        co[5] = copy(co[7]); co[6] = copy(co[7])
         nr_iter += 1
     end
     
     if nr_iter > max_nr_iters
-        return Pos{Float64}[], st_findorbit_not_converged
+        return Pos(0), st_findorbit_not_converged
     end
     
-    closed_orbit, _, _ = line_pass(accelerator, co[7], "open")
-    accelerator.radiation_state = radsts
-    return closed_orbit, st_success
+    closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
+    accelerator.radiation_on = radsts
+    return closed_orbit[1], st_success
 end
 
-function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{Float64} = Pos(0.0))
+function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
 
-    delta = 1e-9              # [m],[rad],[dE/E]
+    # xy_delta = 1e-9
+    # dp_delta = 1e-9
+    delta = 1e-9 #vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
     tolerance = 2.22044604925e-14
     max_nr_iters = 50
     leng = length(accelerator.lattice)
-    
-    radsts::BoolState = accelerator.radiation_state
+
+    if !(1 <= element_offset <= leng)
+        error("element_offset should be >= 1 and <= $leng")
+    end
+
+    radsts::BoolState = accelerator.radiation_on
     if radsts == full
-        accelerator.radiation_state = on
+        accelerator.radiation_on = on
     end
 
     cav_indices::Vector{Int} = find_cav_indices(accelerator)
     if isempty(cav_indices)
-        return Pos[], st_no_cavities_found
+        return Pos(0), st_no_cavities_found
     end
     cavidx::Int = cav_indices[1]
     cav::Element = accelerator.lattice[cavidx]
+    tpsa=false
+
+    if isa(fixed_point_guess.rx, Tpsa)
+        tpsa = true
+    end
 
     # if true
     #     u0 = get_U0(accelerator)
@@ -93,14 +115,21 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{Float64} =
     # end
 
     frf::Float64 = cav.frequency
-    longitudinal_fixed_point::Float64 = (accelerator.velocity / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
 
-    co::Vector{Pos{Float64}} = fill(fixed_point_guess, 7)
-    co2::Vector{Pos{Float64}} = fill(Pos(0.0), 7)
-    D::Vector{Pos{Float64}} = fill(Pos(0.0), 7)
-    M::Vector{Pos{Float64}} = fill(Pos(0.0), 6)
-    dco::Pos{Float64} = Pos(1.0)
-    theta::Pos{Float64} = Pos(0.0)
+
+    # not ATCOMPATIBLE 
+    # longitudinal_fixed_point::Float64 = (accelerator.velocity / 1e8 * accelerator.harmonic_number / frf * 1e8) - accelerator.length
+    
+    # ATCOMPATIBLE
+    T0::Float64 = accelerator.length / light_speed
+    longitudinal_fixed_point::Float64 = light_speed*((1.0*accelerator.harmonic_number)/frf - T0)
+
+    co::Vector{Pos{T}} = fill(fixed_point_guess, 7)
+    co2::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 7)
+    D::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 7)
+    M::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), 6)
+    dco::Pos{T} = Pos(1.0, tpsa=tpsa)
+    theta::Pos{T} = Pos(0.0, tpsa=tpsa)
     theta.dl = longitudinal_fixed_point
 
     D = matrix6_set_identity_posvec(D, delta=delta)
@@ -114,32 +143,29 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{Float64} =
 
         status = st_success
         for i in [1, 2, 3, 4, 5, 6, 7]
-            pf, status, _ = line_pass(accelerator, co[i], [leng+1])
+            pf, status, _ = line_pass(accelerator, co[i], "end")
             co2[i] = copy(pf[1])
         end
 
         if status != st_success
-            return Pos{Float64}[], st_findorbit_one_turn_matrix_problem
+            return Pos(0), st_findorbit_one_turn_matrix_problem
         end
 
         Rf = copy(co2[7]) # is *1e8 bigger
         
         M[1] = (co2[1] - Rf) / (delta)
-        
         M[2] = (co2[2] - Rf) / (delta)
         M[3] = (co2[3] - Rf) / (delta)
         M[4] = (co2[4] - Rf) / (delta)
         M[5] = (co2[5] - Rf) / (delta)
         M[6] = (co2[6] - Rf) / (delta)
-        
         b = (Rf - Ri) - theta
         
-        M_1 = fill(Pos(0.0), 6)
+        M_1 = fill(Pos(0.0, tpsa=tpsa), 6)
         M_1 = matrix6_set_identity_posvec(M_1)
-        
         M_1 = M_1 - M # is *1e8 bigger
         
-        dco = Pos(0.0)
+        dco = Pos(0.0, tpsa=tpsa)
         dco = linalg_solve6_posvec(M_1, b)
         
         co[7] = dco + Ri
@@ -150,28 +176,42 @@ function find_orbit6(accelerator::Accelerator; fixed_point_guess::Pos{Float64} =
     end
     
     if nr_iter > max_nr_iters
-        return Pos{Float64}[], st_findorbit_not_converged
+        return Pos(0), st_findorbit_not_converged
     end
     
-    closed_orbit, _, _ = line_pass(accelerator, co[7], "open")
-    accelerator.radiation_state = radsts
-    return closed_orbit, st_success
+    closed_orbit, _, _ = line_pass(accelerator, co[7], "end", element_offset=element_offset)
+    accelerator.radiation_on = radsts
+    return closed_orbit[1], st_success
 end
 
-function matrix6_set_identity_posvec(D::Vector{Pos{Float64}}; delta::Float64=1.0)
-    M::Vector{Pos{Float64}} = fill(Pos(0.0), length(D))
-    for i in 1:1:6
-        d = Pos(0.0)
-        d[i] = delta
+function matrix6_set_identity_posvec(D::Vector{Pos{T}}; delta::Union{Float64, Vector{Float64}}=1.0) where T
+    tpsa = false
+
+    if isa(D[1].rx, Tpsa)
+        tpsa=true
+    end
+    if isa(delta, Float64)
+        delta = ones(Float64, 6) * delta
+    end
+    M::Vector{Pos{T}} = fill(Pos(0.0, tpsa=tpsa), length(D))
+    for i in 1:6
+        d = Pos(0.0, tpsa=tpsa)
+        d[i] = delta[i]
         M[i] = d
     end
     return M
 end
 
-function linalg_solve4_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
-    m = Matrix{Float64}(undef, 4, 4)   # Create a 4x4 matrix
-    b = Vector{Float64}(undef, 4)      # Create a vector of size 4
-    x = Vector{Float64}(undef, 4)      # Create a solution vector of size 4
+function linalg_solve4_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
+
+    tpsa = false
+    if isa(B.rx, Tpsa)
+        tpsa=true
+    end
+
+    m = Matrix{T}(undef, 4, 4)   # Create a 4x4 matrix
+    b = Vector{T}(undef, 4)      # Create a vector of size 4
+    x = Vector{T}(undef, 4)      # Create a solution vector of size 4
     
     # Populate the matrix and vector
     for i in 1:4
@@ -180,18 +220,26 @@ function linalg_solve4_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
     end
 
     # Solve the system using LU decomposition
-    x .= m \ b
+    l, u, p = lu(m)
+    y = l \ b[p]
+    x = u \ y
     
     # Create the solution vector
-    X = Pos(x[1], x[2], x[3], x[4], 0.0, 0.0)
+    X = Pos(x[1],    x[2],    x[3],    x[4],   0.0,    0.0, tpsa=tpsa)
     
     return X
 end
 
-function linalg_solve6_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
-    m = Matrix{Float64}(undef, 6, 6)   # Create a 6x6 matrix
-    b = Vector{Float64}(undef, 6)      # Create a vector of size 6
-    x = Vector{Float64}(undef, 6)      # Create a solution vector of size 6
+function linalg_solve6_posvec(A::Vector{Pos{T}}, B::Pos{T}) where T
+
+    tpsa = false
+    if isa(B.rx, Tpsa)
+        tpsa=true
+    end
+
+    m = Matrix{T}(undef, 6, 6)   # Create a 6x6 matrix
+    b = Vector{T}(undef, 6)      # Create a vector of size 6
+    x = Vector{T}(undef, 6)      # Create a solution vector of size 6
     
     # Populate the matrix and vector
     for i in 1:6
@@ -200,10 +248,12 @@ function linalg_solve6_posvec(A::Vector{Pos{Float64}}, B::Pos{Float64})
     end
 
     # Solve the system using LU decomposition
-    x .= m \ b
+    l, u, p = lu(m)
+    y = l \ b[p]
+    x = u \ y
     
     # Create the solution vector
-    X = Pos(x[1], x[2], x[3], x[4], x[5], x[6])
+    X = Pos(x[1],    x[2],    x[3],    x[4],    x[5],    x[6], tpsa=tpsa)
     
     return X
 end

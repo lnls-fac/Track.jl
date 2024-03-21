@@ -144,4 +144,53 @@ function lattice_flatten!(arg::Any)
     return latt
 end
 
+function Base.copy(e::Element)
+    e_out = Element("")
+    for prop in fieldnames(Element)
+        value = getfield(e, prop)
+        if isa(value, Vector)
+            setfield!(e_out, prop, copy(value))
+        else
+            setfield!(e_out, prop, value)
+        end
+    end
+    return e_out
+end
+
+function split_element(elem::Element; fractions::Union{Vector{Float64}, Nothing}=nothing, nr_steps::Union{Int, Nothing}=nothing)::Vector{Element}
+    if (fractions === nothing) && (nr_steps === nothing)
+        error("fractions or nr_steps should be passed")
+    end
+    fractions = Float64[1.0/Float64(nr_steps) for _ in 1:nr_steps]
+    elems = Element[]
+    if any([Bool(ceil(getfield(elem, symb))) for symb in (:angle_in, :angle_out, :fint_in, :fint_out)])
+        e_start = copy(elem); e_start.fint_out = 0.0; e_start.angle_out = 0.0; 
+        e_start.length *= fractions[1]
+        e_start.angle *= fractions[1]
+        push!(elems, e_start)
+        for frac in fractions[2:end-1]
+            e = copy(elem)
+            e.fint_in = 0.0 
+            e.angle_in = 0.0
+            e.fint_out = 0.0
+            e.angle_out = 0.0
+            e.length *= frac
+            e.angle *= frac
+            push!(elems, e)
+        end
+        e_end = copy(elem); e_end.fint_in = 0.0; e_end.angle_in = 0.0; 
+        e_end.length *= fractions[end]
+        e_end.angle *= fractions[end]
+        push!(elems, e_end)
+    else
+        for frac in fractions
+            e = copy(elem)
+            e.length *= frac
+            e.angle *= frac
+            push!(elems, e)
+        end
+    end
+    return elems
+end
+
 end # module Elements

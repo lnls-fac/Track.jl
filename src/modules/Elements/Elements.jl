@@ -28,14 +28,18 @@ mutable struct Element
     vmax        ::Float64
     hmin        ::Float64
     hmax        ::Float64
+    t_in        ::Vector{Float64}
+    t_out       ::Vector{Float64}
+    r_in        ::Vector{Float64}
+    r_out       ::Vector{Float64}
     
     Element(fam_name::String) = new(
         fam_name,     # fam_name   
         pm_identity_pass,     # pass_method
         0.0,                  # length     
         vchamber_rectangle,   # vchamber   
-        Vector{Float64}(),    # polynom_a  
-        Vector{Float64}(),    # polynom_b  
+        Float64[],    # polynom_a  
+        Float64[],    # polynom_b  
         1,      # nr_steps   
         0.0,    # angle      
         0.0,    # angle_in   
@@ -51,7 +55,11 @@ mutable struct Element
         0.0,    # vmin
         0.0,    # vmax
         0.0,    # hmin
-        0.0     # hmax  
+        0.0,    # hmax  
+        Float64[],     # t_in
+        Float64[],     # t_out
+        Float64[],     # r_in
+        Float64[]      # r_out
     )
 end
 
