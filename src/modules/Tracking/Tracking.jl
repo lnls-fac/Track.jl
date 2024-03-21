@@ -48,7 +48,7 @@ function element_pass(
     return status
 end
 
-function line_pass_new(
+function _line_pass_new(
     accelerator::Accelerator,
     particle::Pos{T},
     indices::Vector{Int};
