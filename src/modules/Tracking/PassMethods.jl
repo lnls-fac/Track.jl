@@ -161,12 +161,12 @@ function _edge_fringe(pos::Pos{T}, inv_rho::Float64, edge_angle::Float64,
 end
 
 function translate_pos(pos::Pos{T}, t::Vector{Float64}) where T
-    pos.rx += t[1]
-    pos.px += t[2]
-    pos.ry += t[3]
-    pos.py += t[4]
-    pos.de += t[5]
-    pos.dl += t[6]
+    @inbounds pos.rx += t[1]
+    @inbounds pos.px += t[2]
+    @inbounds pos.ry += t[3]
+    @inbounds pos.py += t[4]
+    @inbounds pos.de += t[5]
+    @inbounds pos.dl += t[6]
 end
 
 function rotate_pos(pos::Pos{T}, R::Vector{Float64}) where T
@@ -176,12 +176,12 @@ function rotate_pos(pos::Pos{T}, R::Vector{Float64}) where T
     py0::T = pos.py
     de0::T = pos.de
     dl0::T = pos.dl
-    pos.rx = R[0*6+1] * rx0 + R[0*6+2] * px0 + R[0*6+3] * ry0 + R[0*6+4] * py0 + R[0*6+5] * de0 + R[0*6+6] * dl0;
-    pos.px = R[1*6+1] * rx0 + R[1*6+2] * px0 + R[1*6+3] * ry0 + R[1*6+4] * py0 + R[1*6+5] * de0 + R[1*6+6] * dl0;
-    pos.ry = R[2*6+1] * rx0 + R[2*6+2] * px0 + R[2*6+3] * ry0 + R[2*6+4] * py0 + R[2*6+5] * de0 + R[2*6+6] * dl0;
-    pos.py = R[3*6+1] * rx0 + R[3*6+2] * px0 + R[3*6+3] * ry0 + R[3*6+4] * py0 + R[3*6+5] * de0 + R[3*6+6] * dl0;
-    pos.de = R[4*6+1] * rx0 + R[4*6+2] * px0 + R[4*6+3] * ry0 + R[4*6+4] * py0 + R[4*6+5] * de0 + R[4*6+6] * dl0;
-    pos.dl = R[5*6+1] * rx0 + R[5*6+2] * px0 + R[5*6+3] * ry0 + R[5*6+4] * py0 + R[5*6+5] * de0 + R[5*6+6] * dl0;
+    @inbounds pos.rx = R[0*6+1] * rx0 + R[0*6+2] * px0 + R[0*6+3] * ry0 + R[0*6+4] * py0 + R[0*6+5] * de0 + R[0*6+6] * dl0;
+    @inbounds pos.px = R[1*6+1] * rx0 + R[1*6+2] * px0 + R[1*6+3] * ry0 + R[1*6+4] * py0 + R[1*6+5] * de0 + R[1*6+6] * dl0;
+    @inbounds pos.ry = R[2*6+1] * rx0 + R[2*6+2] * px0 + R[2*6+3] * ry0 + R[2*6+4] * py0 + R[2*6+5] * de0 + R[2*6+6] * dl0;
+    @inbounds pos.py = R[3*6+1] * rx0 + R[3*6+2] * px0 + R[3*6+3] * ry0 + R[3*6+4] * py0 + R[3*6+5] * de0 + R[3*6+6] * dl0;
+    @inbounds pos.de = R[4*6+1] * rx0 + R[4*6+2] * px0 + R[4*6+3] * ry0 + R[4*6+4] * py0 + R[4*6+5] * de0 + R[4*6+6] * dl0;
+    @inbounds pos.dl = R[5*6+1] * rx0 + R[5*6+2] * px0 + R[5*6+3] * ry0 + R[5*6+4] * py0 + R[5*6+5] * de0 + R[5*6+6] * dl0;
 end
 
 function global_2_local(pos::Pos{T}, element::Element) where T

@@ -11,6 +11,7 @@ include("modules/Tracking/trackingModule.jl")
 include("modules/Orbit/orbitModule.jl")
 include("modules/Matrix/matrixModule.jl")
 include("modules/Optics/opticsModule.jl")
+include("modules/Lattice/latticeModule.jl")
 
 using .PosModule: Pos
 using .AcceleratorModule: Accelerator, find_spos, find_indices

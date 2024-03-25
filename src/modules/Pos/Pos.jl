@@ -180,3 +180,28 @@ function Pos_get_max(v::Pos{T}) where T
     max_val = max(abs(v.dl), max_val)
     return max_val
 end
+
+function Base.convert(::Type{Pos{T}}, v::Vector{T}) where T 
+    return Pos(v[:])
+end
+
+function Base.convert(::Type{Vector{Pos{T}}}, m::Matrix{T}) where T
+    if length(size(m)) == 2
+        if size(m)[1] == 6
+            m_ = m
+        elseif size(m)[2] == 6
+            m_ = transpose(m)
+        else
+            error("invalid array dimensions")
+        end
+        
+        vpos::Vector{Pos{T}} = []
+        for i in 1:size(m_)[2]
+           push!(vpos, Pos(m_[1:6, i]))
+        end
+
+        return vpos
+    else
+        error("invalid array dimensions")
+    end
+end

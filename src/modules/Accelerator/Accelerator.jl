@@ -287,6 +287,6 @@ function Base.size(accelerator::Accelerator)
     return size(accelerator.lattice)
 end
 
-# Base.iterate(a::Accelerator, state=1) = state > length(a.lattice) ? nothing : (a.lattice[state], state + 1)
+Base.iterate(a::Accelerator, state=1) = state > length(a.lattice) ? nothing : (a.lattice[state], state + 1)
 
 Base.eachindex(accelerator::Accelerator) = Base.OneTo(length(accelerator.lattice))
