@@ -78,13 +78,21 @@ function find_orbit4(accelerator::Accelerator; energy_offset::Float64=0.0, eleme
     return closed_orbit[1], st_success
 end
 
-function find_orbit6(accelerator::Accelerator; element_offset::Int=1, fixed_point_guess::Pos{T} = Pos(0.0)) where T
+"""AAA"""
+function find_orbit6(
+    accelerator::Accelerator; 
+    element_offset::Int=1, 
+    fixed_point_guess::Pos{T} = Pos(0.0), 
+    delta::Float64=1e-9, 
+    tolerance::Float64=2.22044604925e-14, 
+    max_nr_iters::Int=50
+    ) where T
 
     # xy_delta = 1e-9
     # dp_delta = 1e-9
-    delta = 1e-9 #vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
-    tolerance = 2.22044604925e-14
-    max_nr_iters = 50
+    # delta = 1e-9 #vcat([xy_delta*ones(Float64, 4)... , dp_delta*ones(Float64, 2)...])
+    # tolerance = 2.22044604925e-14
+    # max_nr_iters = 50
     leng = length(accelerator.lattice)
 
     if !(1 <= element_offset <= leng)
