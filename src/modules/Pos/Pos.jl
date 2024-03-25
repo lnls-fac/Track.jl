@@ -181,6 +181,7 @@ function Pos_get_max(v::Pos{T}) where T
     return max_val
 end
 
+# ! REVIEW
 function Base.convert(::Type{Pos{T}}, v::Vector{T}) where T 
     return Pos(v[:])
 end
