@@ -2,7 +2,7 @@
 import Base: !=, getproperty, setfield!, setproperty!
 using Printf
 using ..AcceleratorModule: Accelerator
-using ..Auxiliary: full, no_plane, off, on, pm_bnd_mpole_symplectic4_pass, pm_cavity_pass,
+using ..Auxiliary: Plane, BoolState, full, no_plane, off, on, pm_bnd_mpole_symplectic4_pass, pm_cavity_pass,
     pm_corrector_pass, pm_drift_pass, pm_identity_pass, pm_str_mpole_symplectic4_pass,
     st_success
 using ..Elements: Element
@@ -56,11 +56,11 @@ function _calcpolykick(pos::Pos{T}, polynom_a::Vector{Float64},
     imag_sum::T = 0.0
     n::Int = min(length(polynom_b), length(polynom_a))
     if n != 0
-        real_sum = polynom_b[n]
-        imag_sum = polynom_a[n]
+        @inbounds real_sum = polynom_b[n]
+        @inbounds imag_sum = polynom_a[n]
         for i = n-1:-1:1
-            real_sum_tmp = real_sum * pos.rx - imag_sum * pos.ry + polynom_b[i]
-            imag_sum = imag_sum * pos.rx + real_sum * pos.ry + polynom_a[i]
+            @inbounds real_sum_tmp = real_sum * pos.rx - imag_sum * pos.ry + polynom_b[i]
+            @inbounds imag_sum = imag_sum * pos.rx + real_sum * pos.ry + polynom_a[i]
             real_sum = real_sum_tmp
         end
     end
@@ -161,31 +161,27 @@ function _edge_fringe(pos::Pos{T}, inv_rho::Float64, edge_angle::Float64,
 end
 
 function translate_pos(pos::Pos{T}, t::Vector{Float64}) where T
-    if !isempty(t)
-        @inline pos.rx += t[1]
-        @inline pos.px += t[2]
-        @inline pos.ry += t[3]
-        @inline pos.py += t[4]
-        @inline pos.de += t[5]
-        @inline pos.dl += t[6]
-    end
+    pos.rx += t[1]
+    pos.px += t[2]
+    pos.ry += t[3]
+    pos.py += t[4]
+    pos.de += t[5]
+    pos.dl += t[6]
 end
 
 function rotate_pos(pos::Pos{T}, R::Vector{Float64}) where T
-    if !isempty(R)
-        rx0::T = pos.rx
-        px0::T = pos.px
-        ry0::T = pos.ry
-        py0::T = pos.py
-        de0::T = pos.de
-        dl0::T = pos.dl
-        @inline pos.rx = R[0*6+1] * rx0 + R[0*6+2] * px0 + R[0*6+3] * ry0 + R[0*6+4] * py0 + R[0*6+5] * de0 + R[0*6+6] * dl0;
-        @inline pos.px = R[1*6+1] * rx0 + R[1*6+2] * px0 + R[1*6+3] * ry0 + R[1*6+4] * py0 + R[1*6+5] * de0 + R[1*6+6] * dl0;
-        @inline pos.ry = R[2*6+1] * rx0 + R[2*6+2] * px0 + R[2*6+3] * ry0 + R[2*6+4] * py0 + R[2*6+5] * de0 + R[2*6+6] * dl0;
-        @inline pos.py = R[3*6+1] * rx0 + R[3*6+2] * px0 + R[3*6+3] * ry0 + R[3*6+4] * py0 + R[3*6+5] * de0 + R[3*6+6] * dl0;
-        @inline pos.de = R[4*6+1] * rx0 + R[4*6+2] * px0 + R[4*6+3] * ry0 + R[4*6+4] * py0 + R[4*6+5] * de0 + R[4*6+6] * dl0;
-        @inline pos.dl = R[5*6+1] * rx0 + R[5*6+2] * px0 + R[5*6+3] * ry0 + R[5*6+4] * py0 + R[5*6+5] * de0 + R[5*6+6] * dl0;
-    end
+    rx0::T = pos.rx
+    px0::T = pos.px
+    ry0::T = pos.ry
+    py0::T = pos.py
+    de0::T = pos.de
+    dl0::T = pos.dl
+    pos.rx = R[0*6+1] * rx0 + R[0*6+2] * px0 + R[0*6+3] * ry0 + R[0*6+4] * py0 + R[0*6+5] * de0 + R[0*6+6] * dl0;
+    pos.px = R[1*6+1] * rx0 + R[1*6+2] * px0 + R[1*6+3] * ry0 + R[1*6+4] * py0 + R[1*6+5] * de0 + R[1*6+6] * dl0;
+    pos.ry = R[2*6+1] * rx0 + R[2*6+2] * px0 + R[2*6+3] * ry0 + R[2*6+4] * py0 + R[2*6+5] * de0 + R[2*6+6] * dl0;
+    pos.py = R[3*6+1] * rx0 + R[3*6+2] * px0 + R[3*6+3] * ry0 + R[3*6+4] * py0 + R[3*6+5] * de0 + R[3*6+6] * dl0;
+    pos.de = R[4*6+1] * rx0 + R[4*6+2] * px0 + R[4*6+3] * ry0 + R[4*6+4] * py0 + R[4*6+5] * de0 + R[4*6+6] * dl0;
+    pos.dl = R[5*6+1] * rx0 + R[5*6+2] * px0 + R[5*6+3] * ry0 + R[5*6+4] * py0 + R[5*6+5] * de0 + R[5*6+6] * dl0;
 end
 
 function global_2_local(pos::Pos{T}, element::Element) where T
@@ -198,7 +194,7 @@ function local_2_global(pos::Pos{T}, element::Element) where T
     translate_pos(pos, element.t_out)
 end
 
-function pm_identity_pass!(pos::Pos{T}, element::Element) where T
+function pm_identity_pass!()
     return st_success
 end
 
@@ -214,7 +210,7 @@ function pm_drift_g2l_pass!(pos::Pos{T}, element::Element) where T
     return st_success
 end
 
-function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator) where T
+function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, energy::Float64, radiation_on::BoolState=off) where T
     steps::Int = elem.nr_steps
     sl::Float64 = elem.length / Float64(steps)
     l1::Float64 = sl * DRIFT1
@@ -226,12 +222,12 @@ function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     rad_const::Float64 = 0.0
     qexcit_const::Float64 = 0.0
 
-    if accelerator.radiation_on == on
-        rad_const = CGAMMA * pow3(accelerator.energy/1.0e9) / TWOPI
+    if radiation_on == on
+        rad_const = CGAMMA * pow3(energy/1.0e9) / TWOPI
     end
 
-    if accelerator.radiation_on == full
-        qexcit_const = CQEXT * pow2(accelerator.energy) * sqrt(accelerator.energy * sl)
+    if radiation_on == full
+        qexcit_const = CQEXT * pow2(energy) * sqrt(energy * sl)
     end
     
     global_2_local(pos, elem)
@@ -249,7 +245,7 @@ function pm_str_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     return st_success
 end
 
-function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator) where T
+function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, energy::Float64, radiation_on::BoolState=off) where T
 
     steps::Int = elem.nr_steps
     sl   ::Float64 = elem.length / Float64(steps)
@@ -263,12 +259,12 @@ function pm_bnd_mpole_symplectic4_pass!(pos::Pos{T}, elem::Element, accelerator:
     rad_const::Float64 = 0.0
     qexcit_const::Float64 = 0.0
 
-    if accelerator.radiation_on == on
-        rad_const = CGAMMA * pow3(accelerator.energy / 1e9) / TWOPI
+    if radiation_on == on
+        rad_const = CGAMMA * pow3(energy / 1e9) / TWOPI
     end
 
-    if accelerator.radiation_on == full
-        qexcit_const = CQEXT * accelerator.energy^2 * sqrt(accelerator.energy * sl)
+    if radiation_on == full
+        qexcit_const = CQEXT * energy^2 * sqrt(energy * sl)
     end
 
     ang_in   ::Float64 = elem.angle_in
@@ -324,24 +320,24 @@ function pm_corrector_pass!(pos::Pos{T}, elem::Element) where T
     return st_success
 end
 
-function pm_cavity_pass!(pos::Pos{T}, elem::Element, accelerator::Accelerator, turn_number::Int) where T
-    if accelerator.cavity_on == off
+function pm_cavity_pass!(pos::Pos{T}, elem::Element, energy::Float64, cavity_on::BoolState=off, turn_number::Int=0) where T
+    if cavity_on == off
         return pm_drift_pass!(pos, elem)
     end
 
-    nv::Float64 = elem.voltage / accelerator.energy
+    nv::Float64 = elem.voltage / energy
     philag::Float64 = elem.phase_lag
     frf::Float64 = elem.frequency
 
     # * not ATCOMPATIBLE
-    # velocity::Float64 = accelerator.velocity / 1e8 # numerical problem
+    # velocity::Float64 = velocity / 1e8 # numerical problem
     
     # ATCOMPATIBLE
     velocity::Float64 = light_speed
 
     # * wall clock
-    # harmonic_number::Int = accelerator.harmonic_number
-    # L0::Float64 = accelerator.length
+    # harmonic_number::Int = harmonic_number
+    # L0::Float64 = length
     # factor::Float64 = (velocity*harmonic_number/frf*1e8 - L0) / velocity / 1e8
 
 

@@ -56,10 +56,24 @@ mutable struct Element
         0.0,    # vmax
         0.0,    # hmin
         0.0,    # hmax  
-        Float64[],     # t_in
-        Float64[],     # t_out
-        Float64[],     # r_in
-        Float64[]      # r_out
+        zeros(Float64, 6),     # t_in
+        zeros(Float64, 6),     # t_out
+        Float64[
+        1, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1
+        ],                     # r_in
+        Float64[
+        1, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1
+        ]                      # r_out
     )
 end
 

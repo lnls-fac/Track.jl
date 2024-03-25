@@ -1,49 +1,103 @@
 
 
-export element_pass, line_pass, ring_pass
+export element_pass, line_pass, ring_pass, line_pass_new
 
 using ..AcceleratorModule: Accelerator
-using ..Auxiliary: PassMethod, Plane, Status, no_plane, on, plane_x, plane_xy, plane_y,
-    pm_bnd_mpole_symplectic4_pass, pm_cavity_pass, pm_corrector_pass, pm_drift_pass,
-    pm_identity_pass, pm_str_mpole_symplectic4_pass, st_particle_lost, st_success,
-    vchamber_ellipse, vchamber_rectangle, vchamber_rhombus, BoolState
+using ..Auxiliary: BoolState, PassMethod, Plane, Status, VChamberShape, no_plane, off, on,
+    plane_x, plane_xy, plane_y, pm_bnd_mpole_symplectic4_pass, pm_cavity_pass,
+    pm_corrector_pass, pm_drift_pass, pm_identity_pass, pm_str_mpole_symplectic4_pass,
+    st_particle_lost, st_success, vchamber_ellipse, vchamber_rectangle, vchamber_rhombus
 using ..Elements: Element
 using ..PosModule: Pos
 using ..TPSA: Tpsa
 
 function element_pass(
-    element::Element,            # element through which to track particle
+    element::Element,      # element through which to track particle
     particle::Pos{T},      # initial electron coordinates
-    accelerator::Accelerator;    # accelerator parameters
-    turn_number::Int = 0         # optional turn number parameter
+    energy::Float64;       # accelerator parameters
+    turn_number::Int = 0,  # optional turn number parameter
+    radiation_on::BoolState = off,
+    cavity_on::BoolState = off
     ) where T
-    status::Status = st_success
 
+    status::Status = st_success
     pass_method::PassMethod = element.pass_method
 
     if pass_method == pm_identity_pass
-        status = pm_identity_pass!(particle, element)
+        status = pm_identity_pass!()
 
     elseif pass_method == pm_drift_pass
         status = pm_drift_pass!(particle, element)
 
     elseif pass_method == pm_str_mpole_symplectic4_pass
-        status = pm_str_mpole_symplectic4_pass!(particle, element, accelerator)
+        status = pm_str_mpole_symplectic4_pass!(particle, element, energy, radiation_on)
 
     elseif pass_method == pm_bnd_mpole_symplectic4_pass
-        status = pm_bnd_mpole_symplectic4_pass!(particle, element, accelerator)
+        status = pm_bnd_mpole_symplectic4_pass!(particle, element, energy, radiation_on)
 
     elseif pass_method == pm_corrector_pass
         status = pm_corrector_pass!(particle, element)
 
     elseif pass_method == pm_cavity_pass
-        status = pm_cavity_pass!(particle, element, accelerator, turn_number)
+        status = pm_cavity_pass!(particle, element, energy, cavity_on, turn_number)
 
     else
         return st_passmethod_not_defined
     end
 
     return status
+end
+
+function line_pass_new(
+    accelerator::Accelerator,
+    particle::Pos{T},
+    indices::Vector{Int};
+    element_offset::Int = 1,
+    turn_number::Int = 0
+    ) where T
+
+    status::Status = st_success
+    lostplane::Plane = no_plane
+    lostelement::Int = 0
+
+    nr_elements::Int = length(accelerator)
+    indcs::Vector{Bool} = falses(nr_elements + 1)
+    indcs[indices] .= true
+
+    lattice_iter::Vector{Int} = Vector(1:nr_elements)
+    lattice_iter = append!(lattice_iter[element_offset:end], lattice_iter[1:element_offset-1])
+
+    tracked_pos::Vector{Pos{T}} = Vector(undef, length(indices))
+
+    tpsa=false
+    if isa(particle.rx, Tpsa)
+        tpsa = true
+    end
+
+    j::Int = 1
+    for i in lattice_iter
+        element = accelerator[i]
+
+        # Stores trajectory at entrance of each element
+        if indcs[i] 
+            tracked_pos[j] = copy(particle)
+            j += 1
+        end
+
+        element_pass(element, particle, accelerator.energy, turn_number=turn_number, radiation_on=accelerator.radiation_on, cavity_on=accelerator.cavity_on)
+        status, lostplane = check_if_lost!(particle.rx, particle.ry, element, accelerator.vchamber_on)
+
+        if status != st_success
+            nan_particle::Pos{T} = Pos(NaN,tpsa=tpsa)
+            lostelement = i
+            for k in j:length(tracked_pos)
+                tracked_pos[k] = copy(nan_particle)
+            end
+            particle = nan_particle
+            return tracked_pos, status, lostelement, lostplane
+        end
+    end
+    return tracked_pos, status, lostelement, lostplane
 end
 
 function line_pass(
@@ -53,13 +107,16 @@ function line_pass(
     element_offset::Int = 1,
     turn_number::Int = 0
     ) where T
+
     leng::Float64 = length(accelerator.lattice)
     if any([!(1<=i<=leng+1) for i in indices])
         error("invalid indices: outside of lattice bounds. The valid indices should stay between 1 and $(leng+1)")
     end
+
     if element_offset > leng || element_offset < 1
         error("invalid indices: outside of lattice bounds. The valid indices should stay between 1 and $leng")
     end
+
     tpsa=false
     if isa(particle.rx, Tpsa)
         tpsa = true
@@ -86,9 +143,9 @@ function line_pass(
             push!(tracked_pos, copy(particle))
         end
 
-        status = element_pass(element, particle, accelerator, turn_number=turn_number)
+        status = element_pass(element, particle, accelerator.energy, turn_number=turn_number, radiation_on=accelerator.radiation_on, cavity_on=accelerator.cavity_on)
 
-        status, lostplane = _check_if_lost!(element, particle.rx, particle.ry, accelerator.vchamber_on)
+        status, lostplane = check_if_lost!(particle.rx, particle.ry, element, accelerator.vchamber_on)
 
         if status != st_success
             nan_particle::Pos{T} = Pos(NaN,tpsa=tpsa)
@@ -105,7 +162,7 @@ function line_pass(
             particle.py = nan_particle.py
             particle.de = nan_particle.de
             particle.dl = nan_particle.dl
-            return tracked_pos, status, lostplane, lostelement
+            return tracked_pos, status, lostelement, lostplane
         end
 
         # Moves to the next element index
@@ -117,7 +174,7 @@ function line_pass(
         push!(tracked_pos, copy(particle))
     end
     particle = copy(tracked_pos[end])
-    return tracked_pos, status, lostplane, lostelement
+    return tracked_pos, status, lostelement, lostplane
 end
 
 function line_pass(
@@ -179,15 +236,21 @@ function ring_pass(accelerator::Accelerator,
     return v, st, lostplane, lostturn, lostelement
 end
 
-function _check_if_lost!(element::Element, x::T, y::T, vchamber_on::BoolState) where T
-    status::Status = st_success
-    lost_plane::Plane = no_plane
-    if !isfinite(x)
+function check_if_lost!(
+    rx::T, 
+    ry::T, 
+    element::Element, 
+    vchamber_state::BoolState) where T
+
+    lost_plane :: Plane = no_plane
+    status :: Status = st_success
+
+    if !isfinite(rx)
         lost_plane = plane_x
         status = st_particle_lost
     end
 
-    if !isfinite(y)
+    if !isfinite(ry)
         if status != st_particle_lost
             lost_plane = plane_y
             status = st_particle_lost
@@ -196,21 +259,27 @@ function _check_if_lost!(element::Element, x::T, y::T, vchamber_on::BoolState) w
         end
     end
 
-    if (status != st_particle_lost) && (vchamber_on == on)
-        status, lost_plane = _aux_check_if_lost!(element, x, y)
+    if (status != st_particle_lost) && (vchamber_state == on)
+        status, lost_plane = aux_check_if_lost(rx, ry, element)
     end
+
     return status, lost_plane
+
 end
 
-function _aux_check_if_lost!(element::Element, x::T, y::T) where T
-    status::Status = st_success
-    lost_plane::Plane = no_plane
+function aux_check_if_lost(
+    x::T, 
+    y::T, 
+    element::Element
+    ) where T
+    lost_plane :: Plane = no_plane
+    status :: Status = st_success
     if element.vchamber == vchamber_rectangle
-        if x <= element.hmin || x >= element.hmax
+        if (x <= element.hmin) || (x >= element.hmax)
             lost_plane = plane_x
             status = st_particle_lost
         end
-        if y <= element.vmin || y >= element.vmax
+        if (y <= element.vmin) || (y >= element.vmax)
             if status != st_particle_lost
                 lost_plane = plane_y
                 status = st_particle_lost
@@ -223,28 +292,14 @@ function _aux_check_if_lost!(element::Element, x::T, y::T) where T
         ly::Float64 = (element.vmax - element.vmin) / 2
         xc::Float64 = (element.hmax + element.hmin) / 2
         yc::Float64 = (element.vmax + element.vmin) / 2
-        if lx == 0.0 || ly == 0.0
-            println("largura = 0!!!")
-        end
         xn::Float64 = abs((x - xc) / lx)
         yn::Float64 = abs((y - yc) / ly)
-        amplitude::Float64 = 0.0
-
-        if element.vchamber == vchamber_rhombus
-            amplitude = xn + yn
-        elseif element.vchamber == vchamber_ellipse
-            amplitude = xn^2 + yn^2
-        else
-            amplitude = xn^Int(element.vchamber) + yn^Int(element.vchamber)
-        end
-
-        if amplitude > 1
+        V::Float64 = Int(element.vchamber)*1.0
+        if (xn^V + yn^V) > 1.0
             status = st_particle_lost
             lost_plane = plane_xy
-        else
-            status = st_success
-            lost_plane = no_plane
         end
     end
+
     return status, lost_plane
 end
